@@ -1,4 +1,4 @@
-# Jewery_Store_Sales_Training
+# Jewelry_Store_Sales_Training
 
 The data of this project is provided by a Kays Jewelers, a Jewery Retail chain.
 Back in 2012, the company offered 3 voluntary training modules to its employees (salesperson & store manager) aimed to improve employees’ sales & return performance.
@@ -15,7 +15,7 @@ As Business analysts working on this project, we will use the data (2011-13) for
   
   
   
-  Please find the report for this project ![here](https://github.com/jacksonh2/Jewery_Store_Sales_Training/blob/master/Salesperson%20Training.pdf).
+  Please find the report for this project ![here](https://github.com/jacksonh2/Jewelry_Store_Sales_Training/blob/master/Salesperson%20Training.pdf).
   
   
   
