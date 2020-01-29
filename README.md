@@ -15,7 +15,7 @@ As Business analysts working on this project, we will use the data (2011-13) for
   
   
   
-  Please find the report for this project ![here](https://github.com/jacksonh2/Jewery_Store_Sales_Training/blob/master/Salesperson%20Training%20Project%201.pdf).
+  Please find the report for this project ![here](https://github.com/jacksonh2/Jewery_Store_Sales_Training/blob/master/Salesperson%20Training.pdf).
   
   
   
