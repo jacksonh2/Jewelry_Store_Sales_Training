@@ -1,0 +1,1720 @@
+---
+  title: "Business Analytics Project"
+author: "Group2-Dakshata,Jackson,Kushall,Ritumbhara,Xingmin"
+output: word_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r}  
+#==========================================================
+## SET UP R MARKDOWN
+#==========================================================
+
+# Clearing the working space at the start of every R session
+rm(list = ls())
+
+# Setting the directory
+setwd("/Users/jiach/Desktop")
+getwd()
+
+# Install/Load the required libraries 
+install.packages("stargazer") 
+install.packages("ggplot2")
+install.packages("gdata")
+install.packages("ggeffects")
+install.packages("QuantPsyc")
+install.packages("ggeffects")
+install.packages("QuantPsyc")
+install.packages("VIF")
+install.packages("usdm")
+install.packages("lmtest")
+install.packages("multiwayvcov")
+install.packages("sandwich")
+install.packages("AER")
+install.packages("readstata13")
+
+# Loading libraries everytime a session is started
+library(stargazer)
+library(gdata)
+library(ggplot2)
+library(psych) 
+library(ggeffects)
+library(QuantPsyc)
+library(VIF)
+library(usdm)
+library(lmtest)
+library(multiwayvcov)
+library(sandwich)
+library(foreign)
+library(AER)
+library(haven)
+library(readstata13)
+
+# turn off scientific notation except for big numbers. 
+options(scipen = 9)
+```
+#==========================================================
+## READING AND EXPLORING THE  DATASET
+#==========================================================
+```{r}
+# reading the dta file
+mydata = read.dta13("Annual sales-returns.dta")
+
+# Data summary statistics
+stargazer(mydata, type="text", median=TRUE, iqr=TRUE,digits=1, title="Descriptive Statistics")  
+
+# Checking for normal distribution of the variables to decide if the log-transformed of the variables is required or not 
+#Service years
+ggplot(mydata, aes(x=(sa_yearsofservice))) + geom_histogram(colour="green")
+ggplot(mydata, aes(x=log(sa_yearsofservice))) + geom_histogram(colour="green") # use log transformed dependent variable
+
+#Rate of Pay
+ggplot(mydata, aes(x=sa_rateofpay)) + geom_histogram(colour="green") 
+ggplot(mydata, aes(x=log(sa_rateofpay))) + geom_histogram(colour="green") # use log transformed variable
+
+#Sales Value
+ggplot(mydata, aes(x=salesvalue)) + geom_histogram(colour="green", bins = 15) 
+ggplot(mydata, aes(x=log(salesvalue))) + geom_histogram(colour="green", bins=15) # use log transformed variable
+
+#Return Value
+ggplot(mydata, aes(x=returnvalue)) + geom_histogram(colour="green", bins = 15) 
+ggplot(mydata, aes(x=log(returnvalue))) + geom_histogram(colour="green", bins = 15) # use log transformed variable
+
+#Sales Quantity
+ggplot(mydata, aes(x=salesquantity)) + geom_histogram(colour="green") 
+ggplot(mydata, aes(x=log(salesquantity))) + geom_histogram(colour="green", bins = 15) # use log transformed variable
+
+#Return Quantity
+ggplot(mydata, aes(x=returnquantity)) + geom_histogram(colour="green") 
+ggplot(mydata, aes(x=log(returnquantity))) + geom_histogram(colour="green", bins = 15) # use log transformed variable
+
+#Avg Residency
+ggplot(mydata, aes(x=avg_residency)) + geom_histogram(colour="green") 
+ggplot(mydata, aes(x=log(avg_residency))) + geom_histogram(colour="green", bins = 15) # use raw variable
+
+#No of months worked
+ggplot(mydata, aes(x=numofmonths_worked)) + geom_histogram(colour="green") 
+ggplot(mydata, aes(x=log(numofmonths_worked))) + geom_histogram(colour="green", bins = 15) # use raw variable
+
+#MallsalesSf
+ggplot(mydata, aes(x=mallsalessf)) + geom_histogram(colour="green") 
+ggplot(mydata, aes(x=log(mallsalessf))) + geom_histogram(colour="green", bins = 15) # use raw variable
+
+#Storesqft
+ggplot(mydata, aes(x=storesqft)) + geom_histogram(colour="green") 
+ggplot(mydata, aes(x=log(storesqft))) + geom_histogram(colour="green", bins = 15) # use log transformed variable
+```
+#Multicollinearity test
+```{r}
+df=mydata[c("store_number", "employee_id", "female", "salesquantity","fulltime", "sa_yearsofservice","married", "sa_rateofpay", "child", "year", "avg_female", "avg_age", "avg_income", "avg_homeowner","avg_residency","avg_childowner", "numofmonths_worked","mallsalessf","storesqft","totalcases","padcount")]
+cor(df)
+vif(df)
+vifcor(df)
+##There is multicollinearity for padcount. Hence only one of totalcases or padcount can be used
+
+
+#Replacing the missing values by the mean value for continuous variables
+mydata$sa_yearsofservice <- ifelse(is.na(mydata$sa_yearsofservice), mean(mydata$sa_yearsofservice, na.rm=TRUE), mydata$sa_yearsofservice)
+mydata$sa_rateofpay <- ifelse(is.na(mydata$sa_rateofpay), mean(mydata$sa_rateofpay, na.rm=TRUE), mydata$sa_rateofpay)
+mydata$avg_female <- ifelse(is.na(mydata$avg_female), mean(mydata$avg_female, na.rm=TRUE), mydata$avg_female)
+mydata$avg_age <- ifelse(is.na(mydata$avg_age), mean(mydata$avg_age, na.rm=TRUE), mydata$avg_age)
+mydata$avg_income <- ifelse(is.na(mydata$avg_income), mean(mydata$avg_income, na.rm=TRUE), mydata$avg_income)
+mydata$avg_homeowner <- ifelse(is.na(mydata$avg_homeowner), mean(mydata$avg_homeowner, na.rm=TRUE), mydata$avg_homeowner)
+mydata$avg_residency <- ifelse(is.na(mydata$avg_residency), mean(mydata$avg_residency, na.rm=TRUE), mydata$avg_residency)
+mydata$avg_childowner <- ifelse(is.na(mydata$avg_childowner), mean(mydata$avg_childowner, na.rm=TRUE), mydata$avg_childowner)
+mydata$mallsalessf <- ifelse(is.na(mydata$mallsalessf), mean(mydata$mallsalessf, na.rm=TRUE), mydata$mallsalessf)
+mydata$totalcases <- ifelse(is.na(mydata$totalcases), mean(mydata$totalcases, na.rm=TRUE), mydata$totalcases) 
+mydata$storesqft <- ifelse(is.na(mydata$storesqft), mean(mydata$storesqft, na.rm=TRUE), mydata$storesqft)
+mydata$padcount <- ifelse(is.na(mydata$padcount), mean(mydata$padcount, na.rm=TRUE), mydata$padcount)
+
+#Creating dummy variables (eg: Since gender was F/M it has been assigned 1/0) 
+mydata$female <- ifelse(mydata$sa_gender == 'M',0,1)
+mydata$fulltime <- ifelse(mydata$sa_assignmentcategory == 'PR'| mydata$sa_assignmentcategory =='PT', 0, 1)
+mydata$child <- ifelse(mydata$sa_dependent == 'Yes', 1, 0)
+mydata$married <- ifelse(mydata$sa_maritalstatus == 'S', 0,1)
+
+#Removing the records which have missing values for dummy variables 
+mydata = mydata[mydata$sa_gender!="",]
+
+#Creating TrainingP variable based on the year variable
+mydata$trainingP <- ifelse(mydata$year==2011,0,1)
+
+#In order to create atleast1module variable which takes value 1 if the salesperson has taken training for atleast 1 module, 
+#replacing the NA values by 3 for all the training modules so that the code can be executed to handle NAs.
+mydata$warranty <- ifelse(is.na(mydata$warranty), 3, mydata$warranty)
+mydata$celebritybrand <- ifelse(is.na(mydata$celebritybrand), 3, mydata$celebritybrand)
+mydata$celebration <- ifelse(is.na(mydata$celebration), 3, mydata$celebration)
+mydata$credit <- ifelse(is.na(mydata$credit), 3, mydata$credit)
+mydata$specialevent <- ifelse(is.na(mydata$specialevent), 3, mydata$specialevent)
+mydata$color <- ifelse(is.na(mydata$color), 3, mydata$color)
+mydata$service_selling <- ifelse(is.na(mydata$service_selling), 3, mydata$service_selling)
+mydata$watches <- ifelse(is.na(mydata$watches), 3, mydata$watches)
+
+mydata$atleast1module <- ifelse(mydata$warranty==1 | mydata$credit==1 | mydata$specialevent==1 | mydata$celebritybrand==1 | mydata$celebration==1 | mydata$watches==1 | mydata$color==1 | mydata$service_selling==1,1,0)
+
+#Creating Grouping variable which takes value 1 for all 3 years if the salesperson has opted for training even once 
+mydata$grouping <- mydata$atleast1module #Creating a new column for grouping variable 
+tab <- data.frame(mydata)#convert it to dataframe
+#i follows the no. of columns
+#column 2 for employee id, 3 in dta
+#column 41 is for atleast one ,41 in dta
+#column 42 is created named grouping
+
+# tab[1,2]=tab[row,column]. Code for grouping variable
+for(x in 1:2){
+  for(i in 1:(nrow(tab)-1)) {
+    
+    if(tab[i,2]==tab[i+1,2]){
+      
+      if(tab[i,41]==1|tab[i+1,41]==1){
+        tab[i,42]=1
+        tab[i+1,42]=1
+      }else if(tab[i,41]==0&tab[i+1,41]==0){
+        tab[i,42]=0
+        tab[i+1,42]=0}
+      
+      
+    } else{tab[i,42]=tab[i,41]}  
+    
+  }
+  
+}
+
+write.csv(tab,"groupingfinal.csv",sep=",")
+mydata <- read.csv("groupingfinal.csv")
+mydata$X <- NULL #(Removing the column with Sr numbers )
+
+stargazer(mydata, type="text", median=TRUE, iqr=TRUE,digits=1, title="Descriptive Statistics")  
+
+#Creating log variables
+mydata$logsalesvalue<-log(mydata$salesvalue)
+mydata$logsalesvalue<-ifelse(mydata$salesvalue<0,NA,log(mydata$salesvalue+1)) # generates missing values if experience variable is <= 0
+
+mydata$logserviceyears<-log(mydata$sa_yearsofservice)
+mydata$logserviceyears<-ifelse(mydata$sa_yearsofservice<0,NA,log(mydata$sa_yearsofservice+1)) # generates missing values if experience variable is <= 0
+
+mydata$logstoresize<-log(mydata$storesqft)
+
+mydata$logsalesquantity<-log(mydata$salesquantity)
+
+mydata$lograteofpay<-log(mydata$sa_rateofpay)
+
+mydata$logreturnvalue<-log(mydata$returnvalue)
+mydata$logreturnvalue<-ifelse(mydata$returnvalue<0,NA,log(mydata$returnvalue+1)) # generates missing values if experience variable is <= 0
+
+mydata$logreturnquantity<-log(mydata$returnquantity)
+mydata$logreturnquantity<-ifelse(mydata$returnquantity<0,NA,log(mydata$returnquantity+1)) # generates missing values if experience variable is <= 0
+
+#Creating store_number as a factor variable
+mydata$storeno <- as.factor(mydata$store_number)
+
+##Creating new IV - trained ratio which is created for each year using the formula (No of trained people/Total no of salespeople)
+mydatatest <- mydata[mydata$year==2012,]
+nrow(mydatatest)
+sum(mydatatest$atleast1module)
+a=185/2859
+
+mydatatest1 <- mydata[mydata$year==2013,]
+nrow(mydatatest1)
+sum(mydatatest1$atleast1module)
+b=200/2962
+
+mydata$trainedratio <- ifelse(mydata$year==2011,0,ifelse(mydata$year==2012,a,b))
+
+# Segregating the data for salespeople
+mydataSP = mydata[mydata$sa_rateofpay<50,]
+
+##Assigning mydataQ1 to be used for Question1
+mydataQ1 <- mydataSP
+```
+
+#==========================================================
+## BUILD-UP MODEL for SALESVALUE - Question 1 (Data: 2011, 2012 and 2013)
+#==========================================================
+```{r}
+#Basic OLS model
+modelQ1_1 <- lm (logsalesvalue~trainingP+trainingP*grouping+grouping+store_number+female+fulltime+avg_female+avg_age+avg_income+avg_homeowner+avg_residency+numofmonths_worked+logstoresize+logserviceyears+lograteofpay+mallsalessf+totalcases,data=mydataQ1)
+stargazer(modelQ1_1, 
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+modelQ1_2 <- lm (logsalesvalue~trainingP+trainingP*grouping+grouping+female+fulltime+avg_female+avg_age+avg_income+avg_homeowner+avg_residency+numofmonths_worked+logstoresize+logserviceyears+lograteofpay+mallsalessf+totalcases,data=mydataQ1)
+stargazer(modelQ1_1,modelQ1_2, 
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1","Model-2"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) #without store_number
+
+anova(modelQ1_1,modelQ1_2,test="Chisq") #modelQ1_1 is better
+
+# Since the coefficient of interaction is insignificant, we do not plot the marginal effects graph
+
+# If the plot was plotted:
+#meffectsQ1 <- ggpredict(modelQ1_1, terms=c("trainingP", "grouping")) # generates a tidy data frame  
+# ggplot(meffectsQ1,aes(x, predicted, colour=group)) + geom_line(size=1.3) + xlab("TrainingP") + ylab("Predicted log Sales")
+
+#Heteroskedasticity test
+
+gqtest(modelQ1_1) # Insignificant Goldfeld-Quandt test does not indicate heteroskedasticity 
+bptest(modelQ1_1) # Significant Breusch-Pagan test  indicates heteroskedasticity
+
+#Rectifying for heteroskedasticity
+
+consstderSV1 <- sqrt(diag(vcovHC(modelQ1_1, type="const"))) # produces normal standard errors
+HWrobstderSV1 <- sqrt(diag(vcovHC(modelQ1_1, type="HC1"))) # produces Huber-White robust standard errors 
+clusrobstderSV1 <- sqrt(diag(cluster.vcov(modelQ1_1, mydataQ1$storeno))) # produces clustered robust standard errors
+
+stargazer(modelQ1_1, modelQ1_1, modelQ1_1,  
+          se=list(consstderSV1, HWrobstderSV1,clusrobstderSV1),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE", "HW-Robust SE", "Clustered SE"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))  # displays normal/HW robust/clustered robust standard errors. With clustered robust standard errors, we find that two variables are no longer significant
+
+# Plotting box plot for store number as a cluster variable to check if we heteroskedasticity within the cluster
+
+#Creating a data with only store_number less than 20
+mydataht <- mydata[mydata$store_number<20,]
+ggplot(mydataht, aes(x=storeno, y=logsalesvalue, fill=storeno)) + geom_boxplot() 
++ xlab("Storeno") + ylab("Sales Value") # It seems heteroscedasticity arises due to differences in the stores, therefore, we have to use clustered robust standard errors
+
+#==========================================================
+## BUILD-UP MODEL FOR RETURNVALUE - Question1
+#==========================================================
+
+modelQ1_RV1 <- lm(logreturnvalue~trainingP+trainingP*grouping+grouping+logserviceyears+logsalesvalue+avg_income+avg_age+avg_female+numofmonths_worked+avg_childowner+avg_homeowner+fulltime+avg_residency, data=mydataQ1)
+stargazer(modelQ1_RV1, 
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+# Since the coefficient of interaction is insignificant, we do not plot the marginal effects graph
+# If the plot was plotted:
+# meffectsQ1RV1 <- ggpredict(modelQ1_RV1, terms=c("trainingP", "grouping")) # generates a tidy data frame  
+# ggplot(meffectsQ1RV1,aes(x, predicted, colour=group)) + geom_line(size=1.3) + xlab("TrainingP") + ylab("Predicted log Sales")
+
+#Heteroskedasticity test
+gqtest(modelQ1_RV1) # Significant Goldfeld-Quandt test indicates heteroscedasticity 
+bptest(modelQ1_RV1) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for heteroskedasticity
+consstderRV1 <- sqrt(diag(vcovHC(modelQ1_RV1, type="const"))) # produces normal standard errors
+HWrobstderRV1 <- sqrt(diag(vcovHC(modelQ1_RV1, type="HC1"))) # produces Huber-White robust standard errors 
+clusrobstderRV1 <- sqrt(diag(cluster.vcov(modelQ1_RV1, mydataQ1$storeno))) # produces clustered robust standard errors
+
+stargazer(modelQ1_RV1, modelQ1_RV1, modelQ1_RV1,  
+          se=list(consstderRV1, HWrobstderRV1,clusrobstderRV1),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE", "HW-Robust SE", "Clustered SE"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))  # displays normal/HW robust/clustered robust standard errors. With clustered robust standard errors, we find that two variables are no longer significant
+
+##Plotting box plot for cluster store number against return value 
+ggplot(mydataht, aes(x=storeno, y=logreturnvalue, fill=storeno)) + geom_boxplot() 
++ xlab("storeno") + ylab("Return Value") # It seems heteroscedasticity arises within stores for returnvalue also, hence we will be using clustered robust standard errors
+
+#==========================================================
+## BUILD-UP MODEL FOR SALESQUANTITY - Question1 
+#==========================================================
+
+#Poisson Model for Sales Quantity as it is a count variable
+poissonQ1 <- glm(salesquantity~trainingP+trainingP*grouping+grouping+store_number+female+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+logstoresize+logserviceyears+lograteofpay+mallsalessf+avg_homeowner+avg_residency+totalcases, family="poisson", data=mydataQ1)
+stargazer(poissonQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+# Model fit assessment for poisson model
+poissonQ1a <- glm(salesquantity~1, data=mydataQ1, family="poisson") #Creating an model for model fit assessment
+lrtest(poissonQ1, poissonQ1a) # Likelihood test suggests that poissonQ1 is better, we have model fit
+
+#Negative Binomial Model for Sales Quantity as it is a count variable
+negbinQ1 <- glm.nb(salesquantity~trainingP+trainingP*grouping+grouping+store_number+female+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+logstoresize+logserviceyears+lograteofpay+mallsalessf+avg_homeowner+avg_residency+totalcases, data=mydataQ1)
+stargazer(negbinQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))
+
+# Model fit assessment
+negbinQ1a <- glm.nb(salesquantity ~ 1, data = mydataQ1) #Creating an model for model fit assessment
+lrtest(negbinQ1, negbinQ1a) # # Model fits the data 
+
+# Choosing between Poisson and Negative Binomial regressions
+lrtest(poissonQ1, negbinQ1) # The significant p-value indicates that the negative binomial model is more appropriate than the poisson model.
+
+# Obtain IRRs for Negative Binomial Model
+stargazer(negbinQ1, 
+          apply.coef = exp, t.auto=F, p.auto = F,
+          title="Regression Results", type="text", 
+          column.labels=c("IRRs"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) 
+
+# Heteroskedasticity test
+gqtest(negbinQ1) # Goldfeld-Quandt test does not indicate heteroscedasticity
+bptest(negbinQ1) # Breusch-Pagan test indicates heteroscedasticity
+
+consstderSQ1 <- sqrt(diag(vcovHC(negbinQ1, type="const"))) # produces normal standard errors
+HWrobstderSQ1 <- sqrt(diag(vcovHC(negbinQ1, type="HC1"))) # produces Huber-White robust standard errors 
+clusrobstderSQ1 <- sqrt(diag(cluster.vcov(negbinQ1, mydataQ1$storeno))) # produces clustered robust standard errors
+
+stargazer(negbinQ1, negbinQ1, negbinQ1,  
+          se=list(consstderSQ1, HWrobstderSQ1,clusrobstderSQ1),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE", "HW-Robust SE", "Clustered SE"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))  # displays normal/HW robust/clustered robust standard errors. With clustered robust standard errors, we find that two variables are no longer significant
+
+##Plotting box plot for cluster store number against sales quantity 
+ggplot(mydataht, aes(x=storeno, y=salesquantity, fill=storeno)) + geom_boxplot() 
++ xlab("Storeno") + ylab("Sales Quantity") # It seems heteroscedasticity arises within stores for salesquantity also, hence we will be using clustered robust standard errors
+
+# Visualize the output had the coefficient been significant
+
+meffectsSQ1 <- ggpredict(negbinQ1, terms=c("trainingP","grouping")) 
+ggplot(meffectsSQ1,aes(x, predicted,colour=group)) + geom_line(size=1.3) +
+  xlab("CTrainingP") + ylab("Predicted sales quantity") 
+
+#==========================================================
+## BUILD-UP MODEL FOR RETURNQUANTITY - Question1 
+#==========================================================
+
+#Poisson Model for Return Quantity as it is a count variable
+poissonRQ1 <- glm(returnquantity~trainingP+trainingP*grouping+grouping+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+logsalesquantity+logserviceyears+avg_residency++avg_childowner+avg_homeowner, family="poisson", data=mydataQ1)
+stargazer(poissonRQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+## Model fit assessment 
+poissonRQ1a <- glm(returnquantity~1, data=mydataQ1, family="poisson") #Creating an model for model fit assessment
+lrtest(poissonRQ1, poissonRQ1a) # Likelihood test suggests that poissonQ1 is better, we have model fit
+
+#Negative Binomial Model for Return Quantity as it is a count variable
+negbinRQ1 <- glm.nb(returnquantity~trainingP+trainingP*grouping+grouping+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+logsalesquantity+logserviceyears+avg_residency+avg_childowner+avg_homeowner, data=mydataQ1)
+stargazer(negbinRQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+# Model fit assessment
+negbinRQ1a <- glm.nb(returnquantity ~ 1, data = mydataQ1)  #Creating an model for model fit assessment
+lrtest(negbinRQ1, negbinRQ1a) #Model fits the data 
+
+# Choosing between Poisson and Negative Binomial regressions
+lrtest(poissonRQ1, negbinRQ1) # The significant p-value indicates that the negative binomial model is more appropriate than the poisson model.
+
+# Obtain IRRs for Negative Binomial Model
+stargazer(negbinRQ1, 
+          apply.coef = exp, t.auto=F, p.auto = F,
+          title="Regression Results", type="text", 
+          column.labels=c("IRRs"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) # We might be interested in looking at incident rate ratios rather than coefficients. To do this, we can exponentiate our model coefficients. The output indicates that the incident rate for channel = mail is 1.44 times the incident rate for the reference group (prog = newspaper). Likewise, the incident rate for prog = email is 2.93 times the incident rate for the reference group holding the other variables constant. The percent change in the incident rate of purchase quantity is a 7% increase for every unit increase in num_coupons.
+
+# Heteroskedasticity test
+gqtest(negbinRQ1) # Goldfeld-Quandt test does not indicates heteroscedasticity
+bptest(negbinRQ1) # Breusch-Pagan test indicates heteroscedasticity
+
+consstderRQ1 <- sqrt(diag(vcovHC(negbinRQ1, type="const"))) # produces normal standard errors
+HWrobstderRQ1 <- sqrt(diag(vcovHC(negbinRQ1, type="HC1"))) # produces Huber-White robust standard errors 
+clusrobstderRQ1 <- sqrt(diag(cluster.vcov(negbinRQ1, mydataQ1$storeno))) # produces clustered robust standard errors
+
+stargazer(negbinRQ1, negbinRQ1, negbinRQ1,  
+          se=list(consstderRQ1, HWrobstderRQ1,clusrobstderRQ1),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE", "HW-Robust SE", "Clustered SE"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))  # displays normal/HW robust/clustered robust standard errors. With clustered robust standard errors, we find that two variables are no longer significant
+
+##Plotting box plot for cluster store number against return quantity 
+ggplot(mydataht, aes(x=storeno, y=returnquantity, fill=storeno)) + geom_boxplot() 
++ xlab("Storeno") + ylab("Return Quantity") # It seems heteroscedasticity arises within stores for returnquantity also, hence we will be using clustered robust standard errors
+
+# Visualizing the output
+
+meffectsRQ1 <- ggpredict(negbinRQ1, terms=c("trainingP","grouping")) # generates a tidy data frame at three different values of competence  
+
+ggplot(meffectsRQ1,aes(x, predicted,colour=group)) + geom_line(size=1.3) +
+  xlab("CTrainingP") + ylab("Predicted sales quantity") 
+
+
+
+
+##Assigning mydataQ1 to be used for Question1
+mydataQ1 <- mydataMA
+
+#Multicollinearity test
+df=mydata[c("store_number", "employee_id", "female", "salesquantity","fulltime", "sa_yearsofservice","married", "sa_rateofpay", "child", "year", "avg_female", "avg_age", "avg_income", "avg_homeowner","avg_residency","avg_childowner", "numofmonths_worked","mallsalessf","storesqft","totalcases","padcount")]
+cor(df)
+vif(df)
+vifcor(df)
+##There is multicollinearity for padcount. Hence only one of totalcases or padcount can be used
+
+#==========================================================
+## BUILD-UP MODEL for SALESVALUE - Question 1 (Data: 2011, 2012 and 2013)
+#==========================================================
+
+#Basic OLS model
+modelQ1_1 <- lm (logsalesvalue~trainingP+trainingP*grouping+grouping+store_number+female+fulltime+avg_female+avg_age+avg_income+avg_homeowner+avg_residency+numofmonths_worked+logstoresize+logserviceyears+lograteofpay+mallsalessf+totalcases,data=mydataQ1)
+stargazer(modelQ1_1, 
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+modelQ1_2 <- lm (logsalesvalue~trainingP+trainingP*grouping+grouping+female+fulltime+avg_female+avg_age+avg_income+avg_homeowner+avg_residency+numofmonths_worked+logstoresize+logserviceyears+lograteofpay+mallsalessf+totalcases,data=mydataQ1)
+stargazer(modelQ1_1,modelQ1_2, 
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1","Model-2"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) #without store_number
+
+anova(modelQ1_1,modelQ1_2,test="Chisq") #modelQ1_1 is better
+
+# Since the coefficient of interaction is insignificant, we do not plot the marginal effects graph
+
+# If the plot was plotted:
+#meffectsQ1 <- ggpredict(modelQ1_1, terms=c("trainingP", "grouping")) # generates a tidy data frame  
+# ggplot(meffectsQ1,aes(x, predicted, colour=group)) + geom_line(size=1.3) + xlab("TrainingP") + ylab("Predicted log Sales")
+
+#Heteroskedasticity test
+
+gqtest(modelQ1_1) # Insignificant Goldfeld-Quandt test does not indicate heteroskedasticity 
+bptest(modelQ1_1) # Significant Breusch-Pagan test  indicates heteroskedasticity
+
+#Rectifying for heteroskedasticity
+
+consstderSV1 <- sqrt(diag(vcovHC(modelQ1_1, type="const"))) # produces normal standard errors
+HWrobstderSV1 <- sqrt(diag(vcovHC(modelQ1_1, type="HC1"))) # produces Huber-White robust standard errors 
+clusrobstderSV1 <- sqrt(diag(cluster.vcov(modelQ1_1, mydataQ1$storeno))) # produces clustered robust standard errors
+
+stargazer(modelQ1_1, modelQ1_1, modelQ1_1,  
+          se=list(consstderSV1, HWrobstderSV1,clusrobstderSV1),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE", "HW-Robust SE", "Clustered SE"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))  # displays normal/HW robust/clustered robust standard errors. With clustered robust standard errors, we find that two variables are no longer significant
+
+# Plotting box plot for store number as a cluster variable to check if we heteroskedasticity within the cluster
+
+#Creating a data with only store_number less than 20
+mydataht <- mydata[mydata$store_number<20,]
+ggplot(mydataht, aes(x=storeno, y=logsalesvalue, fill=storeno)) + geom_boxplot() 
++ xlab("Storeno") + ylab("Sales Value") # It seems heteroscedasticity arises due to differences in the stores, therefore, we have to use clustered robust standard errors
+
+#==========================================================
+## BUILD-UP MODEL FOR RETURNVALUE - Question1(manager)
+#==========================================================
+
+modelQ1_RV1 <- lm(logreturnvalue~trainingP+trainingP*grouping+grouping+logserviceyears+logsalesvalue+avg_income+avg_age+avg_female+numofmonths_worked+avg_childowner+avg_homeowner+fulltime+avg_residency, data=mydataQ1)
+stargazer(modelQ1_RV1, 
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+# Since the coefficient of interaction is insignificant, we do not plot the marginal effects graph
+# If the plot was plotted:
+# meffectsQ1RV1 <- ggpredict(modelQ1_RV1, terms=c("trainingP", "grouping")) # generates a tidy data frame  
+# ggplot(meffectsQ1RV1,aes(x, predicted, colour=group)) + geom_line(size=1.3) + xlab("TrainingP") + ylab("Predicted log Sales")
+
+#Heteroskedasticity test
+gqtest(modelQ1_RV1) # Significant Goldfeld-Quandt test indicates heteroscedasticity 
+bptest(modelQ1_RV1) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for heteroskedasticity
+consstderRV1 <- sqrt(diag(vcovHC(modelQ1_RV1, type="const"))) # produces normal standard errors
+HWrobstderRV1 <- sqrt(diag(vcovHC(modelQ1_RV1, type="HC1"))) # produces Huber-White robust standard errors 
+clusrobstderRV1 <- sqrt(diag(cluster.vcov(modelQ1_RV1, mydataQ1$storeno))) # produces clustered robust standard errors
+
+stargazer(modelQ1_RV1, modelQ1_RV1, modelQ1_RV1,  
+          se=list(consstderRV1, HWrobstderRV1,clusrobstderRV1),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE", "HW-Robust SE", "Clustered SE"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))  # displays normal/HW robust/clustered robust standard errors. With clustered robust standard errors, we find that two variables are no longer significant
+
+##Plotting box plot for cluster store number against return value 
+ggplot(mydataht, aes(x=storeno, y=logreturnvalue, fill=storeno)) + geom_boxplot() 
++ xlab("Storeno") + ylab("Return Value") # It seems heteroscedasticity arises within stores for returnvalue also, hence we will be using clustered robust standard errors
+
+#==========================================================
+## BUILD-UP MODEL FOR SALESQUANTITY - Question1 (manager)
+#==========================================================
+
+#Poisson Model for Sales Quantity as it is a count variable
+poissonQ1 <- glm(salesquantity~trainingP+trainingP*grouping+grouping+store_number+female+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+logstoresize+logserviceyears+lograteofpay+mallsalessf+avg_homeowner+avg_residency+totalcases, family="poisson", data=mydataQ1)
+stargazer(poissonQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+# Model fit assessment for poisson model
+poissonQ1a <- glm(salesquantity~1, data=mydataQ1, family="poisson") #Creating an model for model fit assessment
+lrtest(poissonQ1, poissonQ1a) # Likelihood test suggests that poissonQ1 is better, we have model fit
+
+#Negative Binomial Model for Sales Quantity as it is a count variable
+negbinQ1 <- glm.nb(salesquantity~trainingP+trainingP*grouping+grouping+store_number+female+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+logstoresize+logserviceyears+lograteofpay+mallsalessf+avg_homeowner+avg_residency+totalcases, data=mydataQ1)
+stargazer(negbinQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))
+
+# Model fit assessment
+negbinQ1a <- glm.nb(salesquantity ~ 1, data = mydataQ1) #Creating an model for model fit assessment
+lrtest(negbinQ1, negbinQ1a) # # Model fits the data 
+
+# Choosing between Poisson and Negative Binomial regressions
+lrtest(poissonQ1, negbinQ1) # The significant p-value indicates that the negative binomial model is more appropriate than the poisson model.
+
+# Obtain IRRs for Negative Binomial Model
+stargazer(negbinQ1, 
+          apply.coef = exp, t.auto=F, p.auto = F,
+          title="Regression Results", type="text", 
+          column.labels=c("IRRs"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) 
+
+# Heteroskedasticity test
+gqtest(negbinQ1) # Goldfeld-Quandt test does not indicate heteroscedasticity
+bptest(negbinQ1) # Breusch-Pagan test indicates heteroscedasticity
+
+consstderSQ1 <- sqrt(diag(vcovHC(negbinQ1, type="const"))) # produces normal standard errors
+HWrobstderSQ1 <- sqrt(diag(vcovHC(negbinQ1, type="HC1"))) # produces Huber-White robust standard errors 
+clusrobstderSQ1 <- sqrt(diag(cluster.vcov(negbinQ1, mydataQ1$storeno))) # produces clustered robust standard errors
+
+stargazer(negbinQ1, negbinQ1, negbinQ1,  
+          se=list(consstderSQ1, HWrobstderSQ1,clusrobstderSQ1),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE", "HW-Robust SE", "Clustered SE"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))  # displays normal/HW robust/clustered robust standard errors. With clustered robust standard errors, we find that two variables are no longer significant
+
+##Plotting box plot for cluster store number against sales quantity 
+ggplot(mydataht, aes(x=storeno, y=salesquantity, fill=storeno)) + geom_boxplot() 
++ xlab("Storeno") + ylab("Sales Quantity") # It seems heteroscedasticity arises within stores for salesquantity also, hence we will be using clustered robust standard errors
+
+# Visualize the output if the coefficient had been significant
+
+meffectsSQ1 <- ggpredict(negbinQ1, terms=c("trainingP","grouping")) 
+ggplot(meffectsSQ1,aes(x, predicted,colour=group)) + geom_line(size=1.3) +
+  xlab("CTrainingP") + ylab("Predicted sales quantity") 
+
+#==========================================================
+## BUILD-UP MODEL FOR RETURNQUANTITY - Question1  (manager)
+#==========================================================
+
+#Poisson Model for Return Quantity as it is a count variable
+poissonRQ1 <- glm(returnquantity~trainingP+trainingP*grouping+grouping+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+logsalesquantity+logserviceyears+avg_residency++avg_childowner+avg_homeowner, family="poisson", data=mydataQ1)
+stargazer(poissonRQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+## Model fit assessment 
+poissonRQ1a <- glm(returnquantity~1, data=mydataQ1, family="poisson") #Creating an model for model fit assessment
+lrtest(poissonRQ1, poissonRQ1a) # Likelihood test suggests that poissonQ1 is better, we have model fit
+
+#Negative Binomial Model for Return Quantity as it is a count variable
+negbinRQ1 <- glm.nb(returnquantity~trainingP+trainingP*grouping+grouping+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+logsalesquantity+logserviceyears+avg_residency+avg_childowner+avg_homeowner, data=mydataQ1)
+stargazer(negbinRQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+# Model fit assessment
+negbinRQ1a <- glm.nb(returnquantity ~ 1, data = mydataQ1)  #Creating an model for model fit assessment
+lrtest(negbinRQ1, negbinRQ1a) #Model fits the data 
+
+# Choosing between Poisson and Negative Binomial regressions
+lrtest(poissonRQ1, negbinRQ1) # The significant p-value indicates that the negative binomial model is more appropriate than the poisson model.
+
+# Obtain IRRs for Negative Binomial Model
+stargazer(negbinRQ1, 
+          apply.coef = exp, t.auto=F, p.auto = F,
+          title="Regression Results", type="text", 
+          column.labels=c("IRRs"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) # We might be interested in looking at incident rate ratios rather than coefficients. To do this, we can exponentiate our model coefficients. The output indicates that the incident rate for channel = mail is 1.44 times the incident rate for the reference group (prog = newspaper). Likewise, the incident rate for prog = email is 2.93 times the incident rate for the reference group holding the other variables constant. The percent change in the incident rate of purchase quantity is a 7% increase for every unit increase in num_coupons.
+
+# Heteroskedasticity test
+gqtest(negbinRQ1) # Goldfeld-Quandt test does not indicates heteroscedasticity
+bptest(negbinRQ1) # Breusch-Pagan test indicates heteroscedasticity
+
+consstderRQ1 <- sqrt(diag(vcovHC(negbinRQ1, type="const"))) # produces normal standard errors
+HWrobstderRQ1 <- sqrt(diag(vcovHC(negbinRQ1, type="HC1"))) # produces Huber-White robust standard errors 
+clusrobstderRQ1 <- sqrt(diag(cluster.vcov(negbinRQ1, mydataQ1$storeno))) # produces clustered robust standard errors
+
+stargazer(negbinRQ1, negbinRQ1, negbinRQ1,  
+          se=list(consstderRQ1, HWrobstderRQ1,clusrobstderRQ1),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE", "HW-Robust SE", "Clustered SE"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))  # displays normal/HW robust/clustered robust standard errors. With clustered robust standard errors, we find that two variables are no longer significant
+
+##Plotting box plot for cluster store number against return quantity 
+ggplot(mydataht, aes(x=storeno, y=returnquantity, fill=storeno)) + geom_boxplot() 
++ xlab("Storeno") + ylab("Return Quantity") # It seems heteroscedasticity arises within stores for returnquantity also, hence we will be using clustered robust standard errors
+
+# Visualizing the output
+
+meffectsRQ1 <- ggpredict(negbinRQ1, terms=c("trainingP","grouping")) # generates a tidy data frame at three different values of competence  
+
+ggplot(meffectsRQ1,aes(x, predicted,colour=group)) + geom_line(size=1.3) +
+  xlab("CTrainingP") + ylab("Predicted Return quantity") 
+```
+#==========================================================
+## QUESTION 2 
+#==========================================================
+```{r}
+#Creating new dataset with records for only year 2012 and 2013
+mydata12_13 <- mydataSP[mydataSP$year>2011,]
+#Assigning mydataQ2 to be used for Question2
+mydataQ2 <- mydata12_13
+
+#==========================================================
+## BUILD-UP MODEL For SALESVALUE - Question2 
+#==========================================================
+modelQ2_1 <- lm (logsalesvalue~atleast1module+year+female+fulltime+logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+numofmonths_worked+lograteofpay+mallsalessf+totalcases+logstoresize,data=mydataQ2)
+stargazer(modelQ2_1,
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+#Since, we have endogeneity in the atleast1module variable, using  IV estimator 
+modelQ2_IV1<- ivreg(logsalesvalue~atleast1module+year+avg_childowner+totalcases+female+mallsalessf+logstoresize+lograteofpay+fulltime+
+                      avg_homeowner+logserviceyears+avg_residency+avg_female+avg_age+avg_income+numofmonths_worked |
+                      child+married+lograteofpay+fulltime+female+mallsalessf+logstoresize+totalcases+year+avg_homeowner+avg_residency+
+                      avg_childowner+avg_female+avg_age+avg_income+logserviceyears+numofmonths_worked,data=mydataQ2) 
+#married, child are the IVs used
+summary(modelQ2_IV1) # Wald test demonstration
+summary(modelQ2_IV1,diagnostics = TRUE) #F-statistics stage1 is >10 and Sargan is insignificant.
+#Hausman test is significant, thus using 2SLS coefficients as they are less biased than OLS
+
+stargazer(modelQ2_IV1,
+          title="Regression Results", type="text", 
+          column.labels=c("IV-Model for Sales Value"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+#Heteroskedasticity test
+gqtest(modelQ2_IV1) # Goldfeld-Quandt test does not indicates heteroscedasticity
+bptest(modelQ2_IV1) # Breusch-Pagan test indicates heteroscedasticity
+
+#Rectifying for heteroskedasticity
+consstder_SVQ2 <- sqrt(diag(vcovHC(modelQ2_IV1, type="const"))) # produces normal standard errors
+clusrobstder_SVQ2 <- sqrt(diag(cluster.vcov(modelQ2_IV1, mydataQ2$storeno))) # produces clustered robust standard errors
+
+stargazer(modelQ2_IV1, modelQ2_IV1,
+          se=list(consstder_SVQ2, clusrobstder_SVQ2),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE","Clustered SE"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001))  # Using Clustered Robust Standard errors 
+
+#Plotting the marginal effects graph using out of sample prediction
+df=data.frame(atleast1module=mydataQ2$atleast1module ,year= mean(mydataQ2$year),female=mean(mydataQ2$female),avg_residency=mean(mydataQ2$avg_residency),avg_homeowner=mean(mydataQ2$avg_homeowner), married=mean(mydataQ2$married),child=mean(mydataQ2$child),fulltime=mean(mydataQ2$fulltime),lograteofpay=mean(mydataQ2$lograteofpay),logserviceyears=mean(mydataQ2$logserviceyears),logstoresize=mean(mydataQ2$logstoresize),avg_female=mean(mydataQ2$avg_female),avg_income= mean(mydataQ2$avg_income),avg_age=mean(mydataQ2$avg_age), avg_childowner=mean(mydataQ2$avg_childowner),numofmonths_worked=mean(mydataQ2$numofmonths_worked),totalcases=mean(mydataQ2$totalcases),mallsalessf=mean(mydataQ2$mallsalessf)) 
+df$predicted_logsalesvalue <- predict(modelQ2_IV1,newdata=df)
+ggplot(df, aes(y=predicted_logsalesvalue, x=atleast1module)) + geom_line(size=1) 
+
+#==========================================================
+## BUILD-UP MODEL FOR RETURNVALUE- Question2 
+#==========================================================
+#Basic OLS Model
+modelQ2_RV1 <- lm (logreturnvalue~atleast1module+logsalesvalue+avg_female+avg_age+avg_childowner+avg_homeowner+
+                     avg_income+avg_residency+numofmonths_worked+logserviceyears+lograteofpay+fulltime,data=mydataQ2)
+stargazer(modelQ2_RV1,
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+#Using IV estimator
+modelQ2_RV1_IV<- ivreg(logreturnvalue~atleast1module+logsalesvalue+avg_childowner+avg_female+avg_age
+                       +avg_income+avg_homeowner+lograteofpay+avg_residency+logserviceyears+numofmonths_worked+fulltime |
+                         female+child+married+avg_homeowner+avg_residency+avg_childowner+avg_female+avg_age+avg_income+fulltime
+                       +lograteofpay+logserviceyears+numofmonths_worked+logsalesvalue,data=mydataQ2) 
+#female, child, married are used as IVs
+summary(modelQ2_RV1_IV) # Wald test demonstration
+summary(modelQ2_RV1_IV, diagnostics = TRUE) #F-statistics stage1 is >10 and Sargan is insignificant.
+#Hausman test is insignificant, thus using OlS coefficients as they are less biased than 2SLS
+
+#Heteroskedasticity test
+gqtest(modelQ2_RV1) # Insignificant Goldfeld-Quandt test does not indicates heteroscedasticity 
+bptest(modelQ2_RV1) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for heteroskedasticity
+consstder_RVQ2 <- sqrt(diag(vcovHC(modelQ2_RV1, type="const"))) # produces normal standard errors
+clusrobstder_RVQ2 <- sqrt(diag(cluster.vcov(modelQ2_RV1, mydataQ2$storeno))) # produces clustered robust standard errors
+
+stargazer(modelQ2_RV1, modelQ2_RV1,
+          se=list(consstder_RVQ2, clusrobstder_RVQ2),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE", "Clustered SE"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001))  #Using Clustered Robust Standard Errors
+
+#Plotting marginal effects graph using OLS Model
+meffectsQ2_RV1 <- ggpredict(modelQ2_RV1, terms = "atleast1module")
+ggplot(meffectsQ2_RV1,aes(x, predicted)) + geom_line(size=1.3)  +
+  ggtitle("Impact of Atleast 1 Training Module") +
+  theme(plot.title=element_text(hjust=0.5, size=16, colour="darkred", face="bold")) +
+  xlab("Atleast 1 module") + ylab("Predicted return value") 
+
+#==========================================================
+## BUILD-UP MODEL FOR SALESQUANTITY - Question2 
+#==========================================================
+
+#Poisson Model for Sales Quantity as it is a count variable
+poissonQ2SQ <- glm(salesquantity~atleast1module+year+female+fulltime+logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+numofmonths_worked+lograteofpay+mallsalessf+totalcases+logstoresize, family = "poisson", data=mydataQ2)
+stargazer(poissonQ2SQ,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+## Model fit assessment 
+poissonQ2SQa <- glm(salesquantity~1, data=mydataQ2, family="poisson") #Creating an model for model fit assessment
+lrtest(poissonQ2SQ, poissonQ2SQa) # Likelihood test suggests that poissonQ2SQ is better, we have model fit
+
+#Negative Binomial Model for Sales Quantity as it is a count variable
+negbinQ2SQ <- glm.nb(salesquantity~atleast1module+year+female+fulltime+logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+numofmonths_worked+lograteofpay+mallsalessf+totalcases+logstoresize,data=mydataQ2)
+stargazer(negbinQ2SQ,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))
+
+# Model fit assessment
+negbinQ2SQa <- glm.nb(salesquantity ~ 1, data = mydataQ2) #Creating an model for model fit assessment
+lrtest(negbinQ2SQ, negbinQ2SQa) #Model fits the data
+
+# Choosing between Poisson and Negative Binomial regressions
+lrtest(poissonQ2SQ, negbinQ2SQ) # The significant p-value indicates that the negative binomial model is more appropriate than the poisson model.
+
+# Obtain IRRs for negative binomial model
+stargazer(negbinQ2SQ, 
+          apply.coef = exp, t.auto=F, p.auto = F,
+          title="IRR Comparison", type="text", 
+          column.labels=c("Neg. Binomial"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) # We might be interested in looking at incident rate ratios rather than coefficients. To do this, we can exponentiate our model coefficients. The output indicates that the incident rate for channel = mail is 1.44 times the incident rate for the reference group (prog = newspaper). Likewise, the incident rate for prog = email is 2.93 times the incident rate for the reference group holding the other variables constant. The percent change in the incident rate of purchase quantity is a 7% increase for every unit increase in num_coupons.
+
+#Compare with OLS
+#Basic OLS model using log dependent variable so that it can be compared to count model in order to handle endogeneity
+modelQ2_SQ1 <-lm(logsalesquantity~atleast1module+year+female+fulltime+logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+numofmonths_worked+lograteofpay+mallsalessf+totalcases+logstoresize, data=mydataQ2)
+stargazer(negbinQ2SQ, modelQ2_SQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("negbin", "OLS"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+confint(negbinQ2SQ, 'atleast1module')
+#The two models are not comparable as the coefficients are not within the confidence interval.But use OLS to finish the endogeniety analysis.
+
+#Using IV Estimator
+modelQ2_SQIV <- ivreg(logsalesquantity~atleast1module+year+female+fulltime+logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+numofmonths_worked+lograteofpay+mallsalessf+totalcases+logstoresize | married+child+year+female+fulltime+logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+numofmonths_worked+lograteofpay+mallsalessf+totalcases+logstoresize, data=mydataQ2)
+#married, child are used as IVs
+summary(modelQ2_SQIV) # Wald test demonstration
+summary(modelQ2_SQIV,diagnostics = TRUE) #F-statistics stage1 is >10 and Sargan is insignificant. 
+#Hausman test is significant, thus use 2SLS coefficients
+stargazer(modelQ2_SQIV,
+          title="Regression Results", type="text", 
+          column.labels=c("IV-Model for Sales Value"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+#Heteroskedasticity test
+gqtest(modelQ2_SQIV) # Significant Goldfeld-Quandt test indicates heteroscedasticity 
+bptest(modelQ2_SQIV) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for heteroskedasticity
+consstder_SQQ2 <- sqrt(diag(vcovHC(modelQ2_SQIV, type="const"))) # produces normal standard errors
+clusrobstder_SQQ2 <- sqrt(diag(cluster.vcov(modelQ2_SQIV, mydataQ2_1$storeno))) # produces clustered robust standard errors
+
+stargazer(modelQ2_SQIV, modelQ2_SQIV,
+          se=list(consstder_RVQ2,clusrobstder_RVQ2),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE","Clustered SE"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) # Using Clustered robust standard errors
+
+#Plotting marginal effects using out of sample prediction
+df3=data.frame(atleast1module=mydataQ2$atleast1module ,year= mean(mydataQ2$year),female=mean(mydataQ2$female),avg_residency=mean(mydataQ2$avg_residency),avg_homeowner=mean(mydataQ2$avg_homeowner), married=mean(mydataQ2$married),child=mean(mydataQ2$child),fulltime=mean(mydataQ2$fulltime),lograteofpay=mean(mydataQ2$lograteofpay),logserviceyears=mean(mydataQ2$logserviceyears),logstoresize=mean(mydataQ2$logstoresize),avg_female=mean(mydataQ2$avg_female),avg_income= mean(mydataQ2$avg_income),avg_age=mean(mydataQ2$avg_age), avg_childowner=mean(mydataQ2$avg_childowner),numofmonths_worked=mean(mydataQ2$numofmonths_worked),totalcases=mean(mydataQ2$totalcases),mallsalessf=mean(mydataQ2$mallsalessf)) 
+df3$predicted_logsalesquantity <- predict(modelQ2_SQIV,newdata=df3)
+ggplot(df3, aes(y=predicted_logsalesquantity, x=atleast1module)) + geom_line(size=1) 
+
+#==========================================================
+## BUILD-UP MODEL FOR RETURNQUANTITY - Question2 
+#==========================================================
+
+#Poisson Model for Return Quantity as it is a count variable
+poissonQ2RQ <- glm(returnquantity~atleast1module+logsalesvalue+avg_female+avg_age+avg_childowner+avg_homeowner+
+                      avg_income+avg_residency+numofmonths_worked+logserviceyears+lograteofpay+fulltime,family = "poisson",data=mydataQ2)
+stargazer(poissonQ2RQ,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+## Model fit assessment 
+poissonQ2RQa <- glm(salesquantity~1, data=mydataQ2, family="poisson") #Creating an model for model fit assessment
+lrtest(poissonQ2RQ, poissonQ2RQa) # Likelihood test suggests that poissonQ2RQ is better, we have model fit
+
+#Negative Binomial Model for Return Quantity as it is a count variable
+negbinQ2RQ <- glm.nb(returnquantity~atleast1module+logsalesvalue+avg_female+avg_age+avg_childowner+avg_homeowner+
+                        avg_income+avg_residency+numofmonths_worked+logserviceyears+lograteofpay+fulltime,data=mydataQ2)
+stargazer(negbinQ2RQ,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+# Model fit assessment
+negbinQ2RQa <- glm.nb(returnquantity ~ 1, data = mydataQ2) 
+lrtest(negbinQ2RQ, negbinQ2RQa) #Model fits the data 
+
+# Choosing between Poisson and Negative Binomial regressions
+lrtest(poissonQ2RQ, negbinQ2RQ) # The significant p-value indicates that the negative binomial model is more appropriate than the poisson model.
+
+# Obtain IRRs for negative binomial model
+stargazer(negbinQ2RQ, 
+          apply.coef = exp, t.auto=F, p.auto = F,
+          title="Regression Results", type="text", 
+          column.labels=c("IRRs"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) 
+
+#Compare with OLS. Since we have endogeneity we need to use 2sls on ols model 
+#Basic OLS model to compare with negative binomial model
+modelQ2_RQ1 <-lm(logreturnquantity~atleast1module+logsalesvalue+avg_female+avg_age+avg_childowner+avg_homeowner+
+                   avg_income+avg_residency+numofmonths_worked+logserviceyears+lograteofpay+fulltime,data=mydataQ2)
+stargazer(negbinQ2_RQ, modelQ2_RQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("negbin", "OLS"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+confint(negbinQ2_RQ, 'atleast1module')
+#The OLS is not within the confidence interval of the negative binomial model's confidence interval,for the purpose of this question, use OLS to resolve endogenity.
+
+#Using IV estimator
+modelQ2_RQIV <- ivreg(logreturnquantity~atleast1module+logsalesvalue+avg_female+avg_age+avg_childowner+avg_homeowner+
+                        avg_income+avg_residency+numofmonths_worked+logserviceyears+lograteofpay+fulltime|
+                        married+child+female+logsalesvalue+avg_female+avg_age+avg_childowner+avg_homeowner+
+                        avg_income+avg_residency+numofmonths_worked+logserviceyears+lograteofpay+fulltime,data=mydataQ2)
+#Married and child are used as IVs
+summary(modelQ2_RQIV) #Wald test demonstration
+summary(modelQ2_RQIV, diagnostics = TRUE) #F test passes, and Hausman is significant. Go ahead with 2SLS!
+
+#Heteroskedasticity test
+gqtest(modelQ2_RQIV) # Insignificant Goldfeld-Quandt test dore not indicates heteroscedasticity 
+bptest(modelQ2_RQIV) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for heteroskedasticity
+consstder_RQQ2 <- sqrt(diag(vcovHC(modelQ2_RQIV, type="const"))) # produces normal standard errors
+clusrobstder_RQQ2 <- sqrt(diag(cluster.vcov(modelQ2_RQIV, mydataQ2$storeno))) # produces clustered robust standard errors
+
+stargazer(modelQ2_RQIV,modelQ2_RQIV,
+          se=list(consstder_RQQ2,clusrobstder_RQQ2),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE","Clustered SE"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001))  #Using Custered robust standard errors
+#coefficient is significant, and its -2.79
+
+#Plotting marginal effects graph using out of sample prediction
+df4=data.frame(atleast1module=mydataQ2$atleast1module ,logsalesvalue=mean(mydataQ2$logsalesvalue),year= mean(mydataQ2$year),female=mean(mydataQ2$female),avg_residency=mean(mydataQ2$avg_residency),avg_homeowner=mean(mydataQ2$avg_homeowner), married=mydataQ2$married,child=mydataQ2$child,fulltime=mean(mydataQ2$fulltime),lograteofpay=mean(mydataQ2$lograteofpay),logserviceyears=mean(mydataQ2$logserviceyears),logstoresize=mean(mydataQ2$logstoresize),avg_female=mean(mydataQ2$avg_female),avg_income= mean(mydataQ2$avg_income),avg_age=mean(mydataQ2$avg_age), avg_childowner=mean(mydataQ2$avg_childowner),numofmonths_worked=mean(mydataQ2$numofmonths_worked),totalcases=mean(mydataQ2$totalcases),mallsalessf=mean(mydataQ2$mallsalessf)) 
+df4$predicted_logreturnquantity <- predict(modelQ2_RQIV,newdata=df4)
+df4$predicted_returnquantity <- exp(df4$predicted_logreturnquantity)
+ggplot(df4, aes(y=predicted_returnquantity, x=atleast1module)) + geom_line(size=1)
+```
+#==========================================================
+## Question 3 
+#==========================================================
+```{r}
+##Assigning data for Q3
+mydataQ3 <- mydata12_13
+
+#Replacing 3 by 0 so that additional variable can be created and this does not make  a difference in this case
+mydataQ3$warranty <- ifelse(mydataQ3$warranty==3, 0, mydataQ3$warranty)
+mydataQ3$celebritybrand <- ifelse(mydataQ3$celebritybrand==3, 0, mydataQ3$celebritybrand)
+mydataQ3$celebration <- ifelse(mydataQ3$celebration==3, 0, mydataQ3$celebration)
+mydataQ3$credit <- ifelse(mydataQ3$credit==3, 0, mydataQ3$credit)
+mydataQ3$specialevent <- ifelse(mydataQ3$specialevent==3, 0, mydataQ3$specialevent)
+mydataQ3$color <- ifelse(mydataQ3$color==3, 0, mydataQ3$color)
+mydataQ3$service_selling <- ifelse(mydataQ3$service_selling==3, 0, mydataQ3$service_selling)
+mydataQ3$watches <- ifelse(mydataQ3$watches==3, 0, mydataQ3$watches)
+
+# Creating new additionalP variable which takes the cumulative value of TM taken
+mydataQ3$additionalP <- mydataQ3$warranty+mydataQ3$watches+mydataQ3$specialevent+mydataQ3$celebritybrand+mydataQ3$celebration+mydataQ3$color+mydataQ3$service_selling+mydataQ3$credit
+
+#==========================================================
+## BUILD-UP MODEL FOR SALESVALUE - Question 3
+#==========================================================
+
+#Basic OLS Model for salesvalue 
+modelQ3_1 <- lm (logsalesvalue~additionalP+I(additionalP^2)+store_number+year+female+fulltime+logserviceyears+avg_female+avg_homeowner+avg_childowner+avg_residency+avg_age+avg_income+logstoresize+numofmonths_worked+lograteofpay+mallsalessf+totalcases,data=mydataQ3)
+stargazer(modelQ3_1, 
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+#using  IV estimator since we have endogeneity in the additionalP variable which indicates number of training module each salesperson opted for.
+#Creating Squared IVS
+mydataQ3$marriedsq <- mydataQ3$married*mydataQ3$married
+mydataQ3$childsq <- mydataQ3$child*mydataQ3$child
+mydataQ3$trainedratiosq <- mydataQ3$trainedratio*mydataQ3$trainedratio
+
+# IV Model
+modelQ3_IV1 <- ivreg(logsalesvalue~additionalP+I(additionalP^2)+female+fulltime+logserviceyears+avg_female+avg_homeowner+avg_residency+avg_age+avg_income+logstoresize+numofmonths_worked+lograteofpay | trainedratiosq+child+childsq+married+marriedsq+female+fulltime+logserviceyears+avg_female+avg_homeowner+avg_residency+avg_age+avg_income+logstoresize+numofmonths_worked+lograteofpay,data=mydataQ3)
+#IV used- married, child, trainedration, childsq, marriedsq
+summary(modelQ3_IV1) # Wald test demonstration
+summary(modelQ3_IV1,diagnostics = TRUE) #F-statistics stage1 is > 10, Sargan insignificant and Hausman is significant, thus use 2SLS model
+
+## plot meffects 
+
+
+#Heteroskedasticity test
+gqtest(modelQ3_IV1) # Insignificant Goldfeld-Quandt test dore not indicates heteroscedasticity 
+bptest(modelQ3_IV1) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for Heteroskedasticity 
+consstderSV3 <- sqrt(diag(vcovHC(modelQ3_IV1, type="const"))) # produces normal standard errors
+clusrobstderSV3 <- sqrt(diag(cluster.vcov(modelQ3_IV1, mydataQ3$storeno)))
+
+stargazer(modelQ3_IV1,modelQ3_IV1,
+          se=list(consstderSV3, clusrobstderSV3),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE", "Clustered"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) #Using Clustered Robust Stnadard errors
+
+
+
+df5=data.frame(additionalP = seq(0,8,1),female=mean(mydataQ3$female),padcountsq=mean(mydataQ3$padcountsq),childsq= mean(mydataQ3$childsq), marriedsq=mean(mydataQ3$marriedsq),avg_residency=mean(mydataQ3$avg_residency),avg_homeowner=mean(mydataQ3$avg_homeowner), trainedratiosq= mean(mydataQ3$trainedratiosq), trainedratio=mean(mydataQ3$trainedratio),married=mean(mydataQ3$married),child=mean(mydataQ3$child),fulltime=mean(mydataQ3$fulltime),lograteofpay=mean(mydataQ3$lograteofpay),logserviceyears=mean(mydataQ3$logserviceyears),logstoresize=mean(mydataQ3$logstoresize),avg_female=mean(mydataQ3$avg_female),avg_income= mean(mydataQ3$avg_income),avg_age=mean(mydataQ3$avg_age), avg_childowner=mean(mydataQ3$avg_childowner),numofmonths_worked=mean(mydataQ3$numofmonths_worked),totalcases=mean(mydataQ3$totalcases),mallsalessf=mean(mydataQ3$mallsalessf)) 
+
+df5$predicted_logsalesvalue <- predict(modelQ3_IV1,newdata=df5)
+
+df5$predicted_salesvalue <- exp(df5$predicted_logsalesvalue)
+
+ggplot(df5, aes(y=predicted_logsalesvalue, x=additionalP)) + geom_smooth(size=1) 
+
+
+##==========================================================
+## BUILD-UP MODEL FOR RETURNVALUE - Question 3
+#==========================================================
+
+#Basic OLS Model 
+modelQ3_RV1 <- lm (logreturnvalue~additionalP+I(additionalP^2)+logserviceyears+logsalesvalue+avg_female+avg_age+avg_income+numofmonths_worked+fulltime+avg_residency+avg_childowner+avg_homeowner+year,data=mydataQ3)
+stargazer(modelQ3_RV1,
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+#Using IV estimator
+modelQ3_RV_IV1<- ivreg(logreturnvalue~additionalP+I(additionalP^2)+logserviceyears+logsalesvalue+avg_female+avg_age+avg_income+numofmonths_worked+avg_residency+avg_childowner+avg_homeowner | trainedratio+married+marriedsq+logserviceyears+logsalesvalue+avg_female+avg_age+avg_income+numofmonths_worked+avg_residency+avg_childowner+avg_homeowner+year,data=mydataQ3) 
+#trainedratio,married,marriedsq
+summary(modelQ3_RV_IV1, diagnostics = TRUE) #F-statistics stage1 is > 10, Sargan insignificant and hausman test is insignificant, the OLS model will have less biased coeffiecioents and the same can be used for the analysis now!!!
+
+#Plotting marginal effects using OLS Model
+meffectsQ3_RV1 <- ggpredict(modelQ3_RV1, terms = "additionalP")
+ggplot(meffectsQ3_RV1,aes(x, predicted)) + geom_line(size=1.3)  +
+  ggtitle("Quadratic model") +
+  theme(plot.title=element_text(hjust=0.5, size=16, colour="darkred", face="bold")) +
+  xlab("Additional Program") + ylab("Predicted return value") 
+
+#Heteroskedasticity test
+gqtest(modelQ3_RV_IV1) # Insignificant Goldfeld-Quandt test dore not indicates heteroscedasticity 
+bptest(modelQ3_RV_IV1) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for Heteroskedasticity 
+consstderRV3 <- sqrt(diag(vcovHC(modelQ3_RV_IV1, type="const"))) # produces normal standard errors
+clusrobstderRV3 <- sqrt(diag(cluster.vcov(modelQ3_RV_IV1, mydataQ3$storeno)))
+
+stargazer(modelQ3_RV_IV1,modelQ3_RV_IV1,
+          se=list(consstderRV3, clusrobstderRV3),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE", "Clustered"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) #Using Clustered Robust Stnadard errors
+df6=data.frame(additionalP = seq(0,8,1),female=mean(mydataQ3$female),childsq= mean(mydataQ3$childsq), year=mean(mydataQ3$year),logsalesvalue = mean(mydataQ3$logsalesvalue), marriedsq=mean(mydataQ3$marriedsq),avg_residency=mean(mydataQ3$avg_residency),avg_homeowner=mean(mydataQ3$avg_homeowner), trainedratiosq= mean(mydataQ3$trainedratiosq), trainedratio=mean(mydataQ3$trainedratio),married=mean(mydataQ3$married),child=mean(mydataQ3$child),fulltime=mean(mydataQ3$fulltime),lograteofpay=mean(mydataQ3$lograteofpay),logserviceyears=mean(mydataQ3$logserviceyears),logstoresize=mean(mydataQ3$logstoresize),avg_female=mean(mydataQ3$avg_female),avg_income= mean(mydataQ3$avg_income),avg_age=mean(mydataQ3$avg_age), avg_childowner=mean(mydataQ3$avg_childowner),numofmonths_worked=mean(mydataQ3$numofmonths_worked),totalcases=mean(mydataQ3$totalcases),mallsalessf=mean(mydataQ3$mallsalessf)) 
+
+df6$predicted_logreturnvalue <- predict(modelQ3_RV_IV1,newdata=df6)
+
+df6$predicted_returnvalue <- exp(df6$predicted_logreturnvalue)
+
+ggplot(df6, aes(y=predicted_logreturnvalue, x=additionalP)) + geom_smooth(size=1) 
+#==========================================================
+## BUILD-UP MODEL FOR SALESQUANTITY - Question 3
+#==========================================================
+
+#Poisson Model for Sales Quantity as it is a count variable
+poissonSQ3 <- glm(salesquantity~additionalP+I(additionalP^2)+female+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+logstoresize+logserviceyears+lograteofpay+mallsalessf+avg_homeowner+avg_residency+totalcases+year, family="poisson", data=mydataQ3)
+stargazer(poissonSQ3,
+          title="Regression Results", type="text", 
+          column.labels=c("Poisson Model"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))
+
+poissonSQ3a <- glm(salesquantity~1, data=mydataQ3, family="poisson") #Cretaing model for model fit assessment
+lrtest(poissonSQ3, poissonSQ3a) #We have model fit 
+
+#negative binomial
+negbinSQ3 <- glm.nb(salesquantity~additionalP+I(additionalP^2)+female+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+logstoresize+logserviceyears+lograteofpay+mallsalessf+avg_homeowner+avg_residency+totalcases+year, data=mydataQ3)
+stargazer(negbinSQ3,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))
+
+negbinSQ3a <- glm.nb(salesquantity ~ 1, data = mydataQ3) #Creating model for model fit assessment
+lrtest(negbinSQ3, negbinSQ3a) # Model fits the data
+
+#Choosing between poisson and negative binomial model
+lrtest(poissonSQ3, negbinSQ3) #The significant p-value indicates that negative binomial is better
+
+#Compare with OLS - Since we have endogeneity, we need to use the 2SLS model on OLS to resolve the same
+##Basic OLS MOdel 
+modelQ3_SQ1 <-lm(logsalesquantity~additionalP+I(additionalP^2)+female+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+totalcases+logstoresize+logserviceyears+year+lograteofpay+mallsalessf+avg_homeowner+avg_residency, data=mydataQ3)
+
+#Comparison
+stargazer(negbinSQ3, modelQ3_SQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("negbin", "OLS"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+confint(negbinSQ3,'I(additionalP^2)') # The two models cannot be compared but the OLS model can be used now to complete the analysis
+
+#Using IV model for OLS salesquantity
+modelQ3_SQIV1 <-ivreg(logsalesquantity~additionalP+I(additionalP^2)+female+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+totalcases+logstoresize+logserviceyears+lograteofpay+mallsalessf+avg_homeowner+avg_residency | trainedratiosq+married+marriedsq+child+childsq+female+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+totalcases+logstoresize+logserviceyears+lograteofpay+mallsalessf+avg_homeowner+avg_residency,data=mydataQ3)
+summary(modelQ3_SQIV1, diagnostics = TRUE) #F-statistics stage1 is > 10, Sargan insignificant and Hausman is significant, thus use 2SLS model.
+
+#Plotting the marginal effects graph using out of sample prediction 
+stargazer(modelQ3_SQIV1,  
+          title="Regression Results", type="text", 
+          column.labels=c( "ModelQ3_SQIV1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+df7=data.frame(additionalP = seq(0,8,1),female=mean(mydataQ3$female),padcountsq=mean(mydataQ3$padcountsq),childsq= mean(mydataQ3$childsq), marriedsq=mean(mydataQ3$marriedsq),avg_residency=mean(mydataQ3$avg_residency),avg_homeowner=mean(mydataQ3$avg_homeowner), trainedratiosq= mean(mydataQ3$trainedratiosq), trainedratio=mean(mydataQ3$trainedratio),married=mean(mydataQ3$married),child=mean(mydataQ3$child),fulltime=mean(mydataQ3$fulltime),lograteofpay=mean(mydataQ3$lograteofpay),logserviceyears=mean(mydataQ3$logserviceyears),logstoresize=mean(mydataQ3$logstoresize),avg_female=mean(mydataQ3$avg_female),avg_income= mean(mydataQ3$avg_income),avg_age=mean(mydataQ3$avg_age), avg_childowner=mean(mydataQ3$avg_childowner),numofmonths_worked=mean(mydataQ3$numofmonths_worked),totalcases=mean(mydataQ3$totalcases),mallsalessf=mean(mydataQ3$mallsalessf)) 
+
+df7$predicted_logsalesquantity <- predict(modelQ3_SQIV1,newdata=df7)
+
+ggplot(df7, aes(y=predicted_logsalesquantity, x=additionalP)) + geom_smooth(size=1) 
+#==========================================================
+## BUILD-UP MODEL FOR RETURNQUANTITY - Question 3
+#==========================================================
+
+#Poisson Model for Return Quantity as it is a count variable
+poissonRQ3 <- glm(returnquantity~additionalP+I(additionalP^2)+fulltime+avg_childowner+avg_residency+avg_homeowner+avg_female+avg_age+avg_income+numofmonths_worked+logsalesquantity+logserviceyears+year, family="poisson", data=mydataQ3)
+stargazer(poissonRQ3,
+          title="Regression Results", type="text", 
+          column.labels=c("Poisson"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))
+
+poissonRQ3a <- glm(salesquantity~1, data=mydataQ3, family="poisson") #Creating model for model fit assessment
+lrtest(poissonRQ3, poissonRQ3a) #Model fits the data
+
+#Negative Binomial
+negbinRQ3 <- glm.nb(returnquantity~additionalP+I(additionalP^2)+fulltime+avg_childowner+avg_residency+avg_homeowner+avg_female+avg_age+avg_income+numofmonths_worked+logsalesquantity+logserviceyears+year, data=mydataQ3)
+stargazer(negbinRQ3,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))
+
+negbinRQ3a <- glm.nb(salesquantity ~ 1, data = mydataQ3) #Creating model for model fit assessment
+lrtest(negbinRQ3, negbinRQ3a) #Model fits the data
+
+#Choosing between Poisson and Negative Binomial Model 
+lrtest(poissonRQ3, negbinRQ3) #negbin is better
+
+#Obtaining IRR coefficients for negative binomial
+stargazer(negbinRQ3, 
+          apply.coef = exp, t.auto=F, p.auto = F,
+          title="Regression Results", type="text", 
+          column.labels=c("IRRs"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001))
+
+#Compare with OLS
+modelQ3_RQ1 <-lm(logreturnquantity~additionalP+I(additionalP^2)+fulltime+avg_childowner+avg_residency+avg_homeowner+avg_female+avg_age+avg_income+numofmonths_worked+logsalesquantity+logserviceyears+year,data=mydataQ3)
+stargazer(negbinRQ3, modelQ3_RQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("negbin", "OLS"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+
+stargazer(modelQ3_RQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("OLS"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+confint(negbinRQ3,'I(additionalP^2)')
+#Since, the two coefficients are comparable, OLS ban be used to resolve endogeneity
+#Using IV model for OLS returnquantity
+modelQ3_RQIV1 <-ivreg(logreturnquantity~additionalP+I(additionalP^2)+fulltime+avg_childowner+avg_residency+avg_homeowner+avg_female+avg_age+avg_income+numofmonths_worked+logsalesquantity+logserviceyears | trainedratio+married+marriedsq+childsq+child+fulltime+avg_childowner+avg_residency+avg_homeowner+avg_female+avg_age+avg_income+numofmonths_worked+logsalesquantity+logserviceyears,data=mydataQ3)
+summary(modelQ3_RQIV1,diagnostics=TRUE)
+## Since it passes the F-statistics test and hausman is insignificant, the OLS model can be used
+
+#PLotting marginal effects using OLS Model
+meffectsRQ3 <- ggpredict(modelQ3_RQ1, terms=c("additionalP")) # generates a tidy data frame at three different values of competence  
+
+ggplot(meffectsRQ3,aes(x, predicted)) + geom_point(size=3, colour="maroon") + geom_line() +
+  xlab("additionalP") + ylab("Predicted return quantity") +
+  scale_x_continuous(breaks=c(0,1,2,3,4,5,6,7,8), labels=c("0", "1", "2", "3", "4", "5", "6", "7", "8")) 
+```
+#==========================================================
+## Question 4
+#==========================================================
+```{r}
+##Assigning data to Q4
+mydataQ4 <- mydata12_13
+
+#==========================================================
+## BUILD-UP MODEL FOR SALESVALUE - QUESTION 4
+#==========================================================
+
+# Basic OLS model with interaction term
+modelQ4_1 <- lm (logsalesvalue~atleast1module+atleast1module*fulltime+fulltime+female+lograteofpay+logserviceyears+avg_female+avg_age+avg_income+logstoresize+numofmonths_worked+mallsalessf+totalcases+avg_homeowner+avg_residency+avg_childowner,data=mydataQ4)
+stargazer(modelQ4_1, 
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+#using  IV estimator since  we have endogeneity
+modelQ4_IV1 <- ivreg(logsalesvalue~atleast1module+atleast1module*fulltime+fulltime+female+lograteofpay+logserviceyears+avg_female+avg_age+avg_income+avg_childowner+avg_homeowner+avg_residency+logstoresize+numofmonths_worked+totalcases+mallsalessf | child+trainedratio*fulltime+married*fulltime+child*fulltime+female+lograteofpay+totalcases+mallsalessf+female+fulltime+avg_childowner+avg_residency+avg_homeowner+logserviceyears+avg_female+avg_age+avg_income+logstoresize+numofmonths_worked,data=mydataQ4) 
+#IV used- child+child*fulltime+married*fulltime+trainedratio*fulltime
+summary(modelQ4_IV1) # Wald test demonstration
+summary(modelQ4_IV1,diagnostics = TRUE) #F-statistics stage1 is <10, thus the IVs do not work for this model, because we tried all the IVs and they are all weak instrument, so OLS model can be used for this analysis with assume\ption that endogenity is negligible
+
+#Heteroskedasticity test for OLS
+gqtest(modelQ4_1) # Insignificant Goldfeld-Quandt test does not indicates heteroscedasticity 
+bptest(modelQ4_1) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for heteroskedasticity
+consstder_SVQ4 <- sqrt(diag(vcovHC(modelQ4_1, type="const"))) # produces normal standard errors
+clusrobstder_SVQ4 <- sqrt(diag(cluster.vcov(modelQ4_1, mydataQ4$storeno))) # produces clustered robust standard errors
+
+stargazer(modelQ4_1,modelQ4_1,
+          se=list(consstder_SVQ4,clusrobstder_SVQ4),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE","Clustered SE"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) #Clustered robust standard errors to be used
+
+#PLotting marginal effects using OLS Model
+meffectsSV4 <- ggpredict(modelQ4_1, terms=c("atleast1module","fulltime")) # generates a tidy data frame at three different values of competence  
+
+ggplot(meffectsSV4,aes(x, predicted)) + geom_line(aes(color = factor(group)), size=1.3) +
+  xlab("At Least One Module") + ylab("Predicted sales value")
+
+#==========================================================
+## BUILD-UP MODEL FOR RETURNVALUE - Question 4
+#==========================================================
+
+#Basic OLS Model
+modelQ4_RV1 <- lm (logreturnvalue~atleast1module+atleast1module*fulltime+lograteofpay+logserviceyears+logsalesvalue+avg_female+avg_age+avg_childowner+avg_homeowner+avg_income+numofmonths_worked+fulltime+avg_residency,data=mydataQ4)
+stargazer(modelQ4_RV1,
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+#IV estimator
+modelQ4_RVIV<- ivreg(logreturnvalue~atleast1module+atleast1module*fulltime+logserviceyears+lograteofpay+logsalesvalue+lograteofpay+avg_childowner+avg_female+avg_age+avg_income+avg_homeowner+avg_residency+numofmonths_worked+fulltime | child*fulltime+female*fulltime+married*fulltime+trainedratio+trainedratio*fulltime+avg_homeowner+avg_residency+avg_childowner+fulltime+lograteofpay+logserviceyears+avg_female+avg_age+avg_income+numofmonths_worked+logsalesvalue,data=mydataQ4) 
+#female, child, married, trainedratio
+summary(modelQ4_RVIV)
+summary(modelQ4_RVIV, diagnostics = TRUE)
+#F-statistics stage1 is <10, thus the IVs do not work for this model, because we tried all the IVs and they are all weak instrument, so OLS model can be used assuming endogenity is negligible
+
+#Heteroskedasticity test for OLS Model
+gqtest(modelQ4_RV1) # Insignificant Goldfeld-Quandt test does not indicates heteroskedasticity 
+bptest(modelQ4_RV1) # Significant Breusch-Pagan test  indicates heteroskedasticity
+
+#Rectifying for heteroskedasticity
+consstder_RVQ4 <- sqrt(diag(vcovHC(modelQ4_RV1, type="const"))) # produces normal standard errors
+clusrobstder_RVQ4 <- sqrt(diag(cluster.vcov(modelQ4_RV1, mydataQ4$storeno))) # produces clustered robust standard errors
+
+stargazer(modelQ4_RV1,modelQ4_RV1,
+          se=list(consstder_RVQ4,clusrobstder_RVQ4),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE","Clustered SE"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) #Clustered Robust standard errors to be used
+
+#PLotting marginal effects using OLS Model
+meffectsRV4 <- ggpredict(modelQ4_RV1, terms=c("atleast1module","fulltime")) # generates a tidy data frame at three different values of competence  
+
+ggplot(meffectsRV4,aes(x, predicted,colour = group)) + geom_line(size=1.3) +
+  xlab("At Least One Module") + ylab("Predicted return value") +
+  scale_x_continuous(breaks=c(0,1,2,3,4,5,6,7,8), labels=c("0", "1", "2", "3", "4", "5", "6", "7", "8")) 
+
+#==========================================================
+## BUILD-UP MODEL FOR SALESQUANTITY - Question 4 
+#==========================================================
+
+#Poisson model
+poissonQ4SQ <- glm(salesquantity~atleast1module+atleast1module*fulltime+year+store_number+female+fulltime+married+avg_childowner+avg_homeowner+avg_residency+avg_female+avg_age+avg_income+numofmonths_worked+logstoresize+logserviceyears+mallsalessf+totalcases, family="poisson", data=mydataQ4)
+stargazer(poissonQ4SQ,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+## Model fit assessment 
+poissonQ4SQa <- glm(salesquantity~1, data=mydataQ4, family="poisson") #Creating model for model fit assessment
+lrtest(poissonQ4SQ, poissonQ4SQa) #Model fits the data
+
+#Negative binomial
+negbinQ4SQ <- glm.nb(salesquantity~atleast1module+atleast1module*fulltime+year+store_number+female+fulltime+married+avg_female+avg_age+avg_income+numofmonths_worked+logstoresize+logserviceyears+mallsalessf+avg_childowner+avg_residency+avg_homeowner+totalcases, data=mydataQ4)
+stargazer(negbinQ4SQ,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+# Model fit assessment
+negbinQ4SQa <- glm.nb(salesquantity ~ 1, data = mydataQ4) 
+lrtest(negbinQ4SQ, negbinQ4SQa) # # Model fits the data 
+
+# Choosing between Poisson and Negative Binomial regressions
+lrtest(poissonQ4SQ, negbinQ4SQ) # The significant p-value indicates that the neagtive binomial model is more appropriate than the poisson model.
+
+# Obtain IRRs for Negative binomial
+stargazer(negbinQ4SQ, 
+          apply.coef = exp, t.auto=F, p.auto = F,
+          title="Regression Results", type="text", 
+          column.labels=c("IRRs"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) # We might be interested in looking at incident rate ratios rather than coefficients. To do this, we can exponentiate our model coefficients. The output indicates that the incident rate for channel = mail is 1.44 times the incident rate for the reference group (prog = newspaper). Likewise, the incident rate for prog = email is 2.93 times the incident rate for the reference group holding the other variables constant. The percent change in the incident rate of purchase quantity is a 7% increase for every unit increase in num_coupons.
+
+#Compare with OLS as we have endogeneity 
+
+#OLS model
+modelQ4_SQ1 <-lm(logsalesquantity~atleast1module+atleast1module*fulltime+store_number+mallsalessf+female+fulltime+
+                   avg_childowner+avg_residency+avg_homeowner+married+avg_female+avg_age+avg_income+numofmonths_worked+
+                   totalcases+logstoresize+logserviceyears+year, data=mydataQ4)
+
+#Comparison between Negative binomial and OLS
+stargazer(negbinQ4SQ, modelQ4_SQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("negbin", "OLS"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+confint(negbinQ4SQ, 'atleast1module:fulltime')
+#The two coefficients are comparable and hence OLS model can be used to address endogeneity
+
+#Using IV Estimator
+modelQ4_SQIV <- ivreg(log(salesquantity)~atleast1module+atleast1module*fulltime+year+female+fulltime+logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+numofmonths_worked+lograteofpay+mallsalessf+totalcases+logstoresize | married*fulltime+trainedratio*fulltime+year+female+fulltime+child+logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+numofmonths_worked+lograteofpay+mallsalessf+totalcases+logstoresize, data=mydataQ4)
+#married, child, trainratio and the interaction terms of them.
+summary(modelQ4_SQIV) # Wald test demonstration
+summary(modelQ4_SQIV,diagnostics = TRUE) #F-statistics stage1 is <10, thus the IVs do not work for this model, because we tried all the IVs and they are all weak instrument, so OLS can be used assuming endogenity is negligible
+
+stargazer(modelQ4_SQIV,
+          title="Regression Results", type="text", 
+          column.labels=c("IV-Model for Sales Value"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+#Heteroskedasticity test for OLS
+gqtest(modelQ4_SQ1) # Insignificant Goldfeld-Quandt test does not indicates heteroscedasticity 
+bptest(modelQ4_SQ1) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for heteroskedasticity
+consstder_SQQ4 <- sqrt(diag(vcovHC(modelQ4_SQ1, type="const"))) # produces normal standard errors
+clusrobstder_SQQ4 <- sqrt(diag(cluster.vcov(modelQ4_SQ1, mydataQ4$storeno))) # produces clustered robust standard errors
+
+stargazer(modelQ4_SQ1,modelQ4_SQ1,
+          se=list(consstder_RVQ4,clusrobstder_RVQ4),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE","Clustered SE"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) #Use Clustered Robust standard errors
+
+#Plotting marginal effects using OLS Model
+meffectsSQ4 <- ggpredict(modelQ4_SQ1, terms=c("atleast1module","fulltime")) # generates a tidy data frame at three different values of competence  
+
+ggplot(meffectsSQ4,aes(x, predicted,colour = group)) + geom_line(size=1.3) +
+  xlab("At Least One Module") + ylab("Predicted Sales Quantity") +
+  scale_x_continuous(breaks=c(0,1,2,3,4,5,6,7,8), labels=c("0", "1", "2", "3", "4", "5", "6", "7", "8")) 
+
+#==========================================================
+## BUILD-UP MODEL FOR RQUANTITY - Question 4 
+#==========================================================
+
+#Poisson Model
+poissonQ4RQ <- glm(returnquantity~atleast1module+atleast1module*fulltime+fulltime+avg_childowner+avg_residency+avg_homeowner+avg_female+avg_age+avg_income+numofmonths_worked+logserviceyears+year,family = "poisson" ,data=mydataQ4)
+stargazer(poissonQ4RQ,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) # The coefficient for num_coupons is .07.This means that the expected log count for a one-unit increase in num_coupons is .07. The indicator variable channel email compares between channel = "email" and channel = "newspaper", the expected log count for prog = "email" increases by about 1.08. The indicator variable channel.mail is the expected difference in log count (approx 0.37) between channel = "mail" and the reference group (channel = "newspaper"). 
+
+poissonQ4RQa <- glm(salesquantity~1, data=mydataQ4, family="poisson") #Creating model for model fit assessment
+lrtest(poissonQ4RQ, poissonQ4RQa) #Model fits the data
+
+#Neagtive Binomial
+negbinQ4RQ <- glm.nb(returnquantity~atleast1module+atleast1module*fulltime+fulltime+avg_childowner+avg_residency+avg_homeowner+avg_female+avg_age+avg_income+numofmonths_worked+logserviceyears+year ,data=mydataQ4)
+stargazer(negbinQ4RQ,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+# Model fit assessment
+negbinQ4RQa <- glm.nb(salesquantity ~ 1, data = mydataQ4) 
+lrtest(negbinQ4RQ, negbinQ4RQa) # # Model fits the data 
+
+# Choosing between Poisson and Negative Binomial regressions
+lrtest(poissonQ4RQ, negbinQ4RQ) # The significant p-value indicates that the neagtive binomial model,is more appropriate than the poisson model.
+
+# Obtain IRRs for Negative Binomial Model
+stargazer(negbinQ4RQ, 
+          apply.coef = exp, t.auto=F, p.auto = F,
+          title="Regression Results", type="text", 
+          column.labels=c("IRRs"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) # We might be interested in looking at incident rate ratios rather than coefficients. To do this, we can exponentiate our model coefficients. The output indicates that the incident rate for channel = mail is 1.44 times the incident rate for the reference group (prog = newspaper). Likewise, the incident rate for prog = email is 2.93 times the incident rate for the reference group holding the other variables constant. The percent change in the incident rate of purchase quantity is a 7% increase for every unit increase in num_coupons.
+
+#Compare with OLS as we have endogeneity
+
+#Basic OLS Model
+modelQ4_RQ1 <-lm(logreturnquantity~atleast1module+atleast1module*fulltime+fulltime+avg_childowner+avg_residency+avg_homeowner+avg_female+avg_age+avg_income+numofmonths_worked+logserviceyears+year, data=mydataQ4)
+
+#Comparison
+stargazer(negbinQ4RQ, modelQ4_RQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("negbin", "OLS"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+confint(negbinQ4RQ, 'atleast1module:fulltime')
+#The two are comparable as OLS is within the confidence interval for key interaction trerm, Hence OLS model can be used to address endogeneity
+
+#USE 2SLS TO RESOLVE ENDOGENITY
+modelQ4_RQIV <-ivreg(logreturnquantity~atleast1module+atleast1module*fulltime+fulltime+avg_childowner+avg_residency+avg_homeowner+avg_female+avg_age+avg_income+numofmonths_worked+logserviceyears+year |  female*fulltime + trainedratio+trainedratio*fulltime + married*fulltime + fulltime+avg_childowner+avg_residency+avg_homeowner+avg_female+avg_age+avg_income+numofmonths_worked+logserviceyears+year, data=mydataQ4)
+#IV used: trainedratio*fulltime,trainedratio,married*fulltime,female*fulltime
+summary(modelQ4_RQIV) #Wald test demonstration
+summary(modelQ4_RQIV, diagnostics = TRUE) #Fstatictics> 10, Sargan is insignificant and Hausman test is insignificant, thus use OLS
+
+# Heteroscedasticity test for OLS
+gqtest(modelQ4_RQ1) # Goldfeld-Quandt test does not indicate heteroscedasticity
+bptest(modelQ4_RQ1) # Breusch-Pagan test indicates heteroscedasticity
+
+#Rectifying fotr heteroskedasticity
+consstderQ4_RQ <- sqrt(diag(vcovHC(modelQ4_RQ1, type="const"))) # produces normal standard errors
+clusrobstderQ4_RQ <- sqrt(diag(cluster.vcov(modelQ4_RQ1, mydataQ4$storeno))) # produces clustered robust standard errors
+
+stargazer(modelQ4_RQ1,modelQ4_RQ1, 
+          se=list(consstderQ4_RQ,clusrobstderQ4_RQ ),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE","Clustered Rob"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))  
+
+#Plotting marginal effects using OLS Model
+meffectsRQ4 <- ggpredict(modelQ4_RQ1, terms=c("atleast1module","fulltime")) # generates a tidy data frame at three different values of competence  
+
+ggplot(meffectsRQ4,aes(x, predicted,colour = group)) + geom_line(size=1.3) +
+  xlab("at least 1 module") + ylab("Predicted Return Quantity") +
+  scale_x_continuous(breaks=c(0,1,2,3,4,5,6,7,8), labels=c("0", "1", "2", "3", "4", "5", "6", "7", "8")) 
+
+```
+#==========================================================
+## Question 5
+#==========================================================
+```{r}
+#Assigning data for Question 5
+mydataQ5 <- mydata12_13
+
+#==========================================================
+## BUILD-UP MODEL For SALESVALUE - Question 5
+#==========================================================
+
+#Basic OLS Model
+modelQ5_1 = lm(logsalesvalue~atleast1module+atleast1module*logserviceyears+logserviceyears+store_number+year+female+fulltime+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+lograteofpay+logstoresize+mallsalessf+totalcases,data=mydataQ5)
+stargazer(modelQ5_1,
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+#using  IV estimator
+modelQ5_IV1 <- ivreg(logsalesvalue~atleast1module+atleast1module*logserviceyears+logserviceyears+store_number+year+female+fulltime+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+lograteofpay+logstoresize+mallsalessf+totalcases+year | child+married+married*logserviceyears+logserviceyears+store_number+year+female+fulltime+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+lograteofpay+logserviceyears+logstoresize+mallsalessf+totalcases+year, data=mydataQ5)
+# IVs used : child,married,married*logserviceyears
+summary(modelQ5_IV1,diagnostics = TRUE)
+##Combination of IVS dont work, need more IVs, data. For this analysis OLS can be used to complete the analysis 
+
+#Heteroskedasticity test for OLS
+gqtest(modelQ5_1) # Insignificant Goldfeld-Quandt test does not indicates heteroscedasticity 
+bptest(modelQ5_1) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for heteroskedasticity
+consstderSV5 <- sqrt(diag(vcovHC(modelQ5_1, type="const"))) # produces normal standard errors
+clusrobstderSV5 <- sqrt(diag(cluster.vcov(modelQ5_1, mydataQ5$store_number))) # produces clustered robust standard errors
+
+stargazer(modelQ5_1,modelQ5_1,
+          se=list(consstderSV5,clusrobstderSV5),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE","Clustered SE"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001)) # Use Clustered Robust standard errors
+
+#Plotting marginal effects using OLS Model
+meffectsSV5 <- ggpredict(modelQ5_1, terms=c("logserviceyears","atleast1module")) # generates a tidy data frame at three different values of competence  
+
+ggplot(meffectsSV5,aes(x, predicted,colour = group)) + geom_line(size=1.3) +
+  xlab("log service years") + ylab("Predicted Sales Value") +
+  scale_x_continuous(breaks=c(0,1,2,3,4,5,6,7,8), labels=c("0", "1", "2", "3", "4", "5", "6", "7", "8")) 
+
+#==========================================================
+## BUILD-UP MODEL FOR RETURNVALUE - Question 5
+#==========================================================
+
+# Basic OLS Model
+modelQ5_RV1 <- lm (logreturnvalue~atleast1module+logserviceyears+atleast1module*logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+mallsalessf+logsalesvalue+fulltime,data=mydataQ5)
+stargazer(modelQ5_RV1, 
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+#IV estimator
+modelQ5_RV_IV1<- ivreg(logreturnvalue~atleast1module+logserviceyears+atleast1module*logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+mallsalessf+logsalesvalue+fulltime | trainedratio+trainedratio*logserviceyears+married*logserviceyears+married+child+logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+mallsalessf+avg_age+avg_income+logsalesvalue+fulltime, data=mydataQ5) 
+#IVs used: trainedratio,trainedratio*logserviceyears,married*logserviceyears,married,child
+summary(modelQ5_RV_IV1,diagnostics = TRUE)
+##Combination of IVS dont work (It does not pass the F-statistics test), need more IVs, data. For this analysis OLS can be used to complete the analysis 
+
+#Heteroskedasticity for OLS
+gqtest(modelQ5_RV1) # Significant Goldfeld-Quandt test indicates heteroscedasticity 
+bptest(modelQ5_RV1) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for heteroskedasticity
+consstder <- sqrt(diag(vcovHC(modelQ5_RV1, type="const"))) # produces normal standard errors
+clusrobstder <- sqrt(diag(cluster.vcov(modelQ5_RV1, mydataQ5$store_number))) # produces clustered robust standard errors
+
+stargazer(modelQ5_RV1, modelQ5_RV1,
+          se=list(consstder, clusrobstder),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE","Clustered SE"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001))  #Use clustered robust standard errors
+
+#Plotting marginal effects using OLS Model
+meffectsRV5 <- ggpredict(modelQ5_RV1, terms=c("logserviceyears","atleast1module")) # generates a tidy data frame at three different values of competence  
+
+ggplot(meffectsRV5,aes(x, predicted,colour = group)) + geom_line(size=1.3) +
+  xlab("Log Service Years") + ylab("Predicted Return Value") +
+  scale_x_continuous(breaks=c(0,1,2,3,4,5,6,7,8), labels=c("0", "1", "2", "3", "4", "5", "6", "7", "8")) 
+
+#==========================================================
+## BUILD-UP MODEL FOR SALESQUANTITY - Question 5
+#==========================================================
+
+## Poisson
+poissonSQ5 <- glm(logsalesquantity~atleast1module+atleast1module*logserviceyears+logserviceyears+female+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+totalcases+logstoresize+year+lograteofpay+mallsalessf+avg_homeowner+avg_residency,family = "poisson", data=mydataQ5)
+stargazer(poissonSQ5,
+          title="Regression Results", type="text", 
+          column.labels=c("Poisson"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))
+
+poissonSQ5a <- glm(salesquantity~1, data=mydataQ5, family="poisson") # Creating model for model fits assessment
+lrtest(poissonSQ5, poissonSQ5a) #Model fits the data
+
+#Negative Binomial
+negbinSQ5 <- glm.nb(logsalesquantity~atleast1module+atleast1module*logserviceyears+logserviceyears+female+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+totalcases+logstoresize+year+lograteofpay+mallsalessf+avg_homeowner+avg_residency, data=mydataQ5)
+stargazer(negbinSQ5,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))
+
+negbinSQ5a <- glm.nb(salesquantity ~ 1, data = mydataQ5) # Creating model for model fit assessment
+lrtest(negbinSQ5, negbinSQ5a) # Model fits the data
+
+#Choosing between Poisson and Negative Binomial 
+lrtest(poissonSQ5, negbinSQ5) #Negative Binomial is better
+
+#Compare with OLS
+##OLS MOdel 
+modelQ5_SQ1 <-lm(logsalesquantity~atleast1module+atleast1module*logserviceyears+logserviceyears+female+fulltime+avg_female+avg_age+avg_income+totalcases+logstoresize+lograteofpay+avg_homeowner+avg_residency, data=mydataQ5)
+stargazer(negbinSQ5, modelQ5_SQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("negbin", "OLS"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))
+
+confint(negbinSQ5,'atleast1module:logserviceyears') #The two are not comparable, however as we have endogeneity, OLS can be used to complete teh analysis
+
+#Using IV model for OLS salesquantity
+modelQ3_SQIV1 <-ivreg(logsalesquantity~atleast1module+atleast1module*logserviceyears+logserviceyears+female+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+totalcases+logstoresize+lograteofpay+mallsalessf+avg_homeowner+avg_residency | married+trainedratio+child+logserviceyears+female+fulltime+avg_female+avg_age+avg_income+numofmonths_worked+totalcases+logstoresize+lograteofpay+mallsalessf+avg_homeowner+avg_residency,data=mydataQ5)
+summary(modelQ3_SQIV1, diagnostics = TRUE)
+##Combination of IVS dont work (It does not pass the F-statistics test), need more IVs, data. For this analysis OLS can be used to complete the analysis 
+
+#Heteroskedasticity for OLS
+gqtest(modelQ5_SQ1) # Insignificant Goldfeld-Quandt test does not indicates heteroscedasticity 
+bptest(modelQ5_SQ1) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for heteroskedasticity
+consstder <- sqrt(diag(vcovHC(modelQ5_SQ1, type="const"))) # produces normal standard errors
+clusrobstder <- sqrt(diag(cluster.vcov(modelQ5_SQ1, mydataQ5$store_number))) # produces clustered robust standard errors
+
+stargazer(modelQ5_SQ1, modelQ5_SQ1,
+          se=list(consstder, clusrobstder),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE","Clustered SE"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001))  #Use clustered robust standard errors
+
+#Plotting marginal effects using OLS Model
+meffectsSQ5 <- ggpredict(modelQ5_SQ1, terms=c("logserviceyears","atleast1module")) # generates a tidy data frame at three different values of competence  
+
+ggplot(meffectsSQ5,aes(x, predicted,colour = group)) + geom_line(size=1.3) +
+  xlab("LOGService Years") + ylab("Predicted Sales Quantity") +
+  scale_x_continuous(breaks=c(0,1,2,3,4,5,6,7,8), labels=c("0", "1", "2", "3", "4", "5", "6", "7", "8")) 
+
+#==========================================================
+## BUILD-UP MODEL FOR RETURNQUANTITY _Question 5
+#==========================================================
+
+#Poisson Model
+poissonRQ5 <- glm(returnquantity~atleast1module+logserviceyears+atleast1module*logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+mallsalessf+logsalesquantity+fulltime,family="poisson",data=mydataQ5)
+stargazer(poissonRQ5,
+          title="Regression Results", type="text", 
+          column.labels=c("Poisson"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))
+
+poissonRQ5a <- glm(salesquantity~1, data=mydataQ5, family="poisson") #Creating model for model fit assessment
+lrtest(poissonRQ5, poissonRQ5a) #Model fits the data
+
+#negative binomial
+negbinRQ5 <- glm.nb(returnquantity~atleast1module+logserviceyears+atleast1module*logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+mallsalessf+logsalesquantity+fulltime,data=mydataQ5)
+stargazer(negbinRQ5,  
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))
+
+negbinRQ5a <- glm.nb(salesquantity ~ 1, data = mydataQ5) #Creating model for model fit assessment
+lrtest(negbinRQ5, negbinRQ5a) #Model fits the data
+
+#Choosing between Poisson and Negative Binomial
+lrtest(poissonRQ5, negbinRQ5) #negbin is better
+ 
+#Obtaining IRR coefficient for Negative binomial
+stargazer(negbinRQ5, 
+          apply.coef = exp, t.auto=F, p.auto = F,
+          title="Regression Results", type="text", 
+          column.labels=c("IRRs"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001))
+
+#Compare with OLS as we have endogeneity
+modelQ5_RQ1 <- lm(returnquantity~atleast1module+logserviceyears+atleast1module*logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+mallsalessf+logsalesquantity+fulltime,data=mydataQ5)
+
+#Comparison
+stargazer(negbinRQ5, modelQ5_RQ1,  
+          title="Regression Results", type="text", 
+          column.labels=c("negbin", "OLS"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+confint(negbinRQ5,'atleast1module:logserviceyears')
+
+#Using IV model for OLS returnquantity
+modelQ5_RQIV1 <-ivreg(returnquantity~atleast1module+logserviceyears+atleast1module*logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+mallsalessf+logsalesquantity+fulltime | married*logserviceyears+trainedratio+child*logserviceyears+child+logserviceyears+avg_homeowner+avg_childowner+avg_residency+avg_female+avg_age+avg_income+mallsalessf+logsalesquantity+fulltime,data=mydataQ3)
+summary(modelQ5_RQIV1,diagnostics=TRUE)
+##Combination of IVS dont work (It does not pass the F-statistics test), need more IVs, data. For this analysis OLS can be used to complete the analysis 
+
+#Heteroskedasticity for OLS
+gqtest(modelQ5_RQ1) # Insignificant Goldfeld-Quandt test does not indicates heteroscedasticity 
+bptest(modelQ5_RQ1) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for heteroskedasticity
+consstderRQ5 <- sqrt(diag(vcovHC(modelQ5_RQ1, type="const"))) # produces normal standard errors
+clusrobstderRQ5 <- sqrt(diag(cluster.vcov(modelQ5_RQ1, mydataQ5$store_number))) # produces clustered robust standard errors
+
+stargazer(modelQ5_RQ1, modelQ5_RQ1,
+          se=list(consstderRQ5, clusrobstderRQ5),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE","Clustered SE"),
+          df=FALSE, digits=4, star.cutoffs = c(0.05,0.01,0.001))  #Use clustered robust standard errors
+
+#Plotting marginal effects using OLS Model
+meffectsRQ5 <- ggpredict(modelQ5_RQ1, terms=c("logserviceyears","atleast1module")) # generates a tidy data frame at three different values of competence  
+
+ggplot(meffectsRQ5,aes(x, predicted,colour = group)) + geom_line(size=1.3) +
+  xlab("Log Service Years") + ylab("Return Quantity") +
+  scale_x_continuous(breaks=c(0,1,2,3,4,5,6,7,8), labels=c("0", "1", "2", "3", "4", "5", "6", "7", "8")) 
+
+```
+#==========================================================
+## Question 6 
+#==========================================================
+```{r}
+#Assigning data to Q6
+mydataQ6 <- mydataQ3
+mydataQ6$productknowledge <- mydataQ6$warranty+mydataQ6$credit+mydataQ6$specialevent+mydataQ6$celebritybrand+mydataQ6$celebration+mydataQ6$watches+mydataQ6$color
+stargazer(mydataQ6, type="text", median=TRUE, iqr=TRUE,digits=1, title="Descriptive Statistics")  
+
+#==========================================================
+## BUILD-UP MODEL for SALESVALUE - Question 6 
+#==========================================================
+
+#Basic OLS Model
+modelQ6 <- lm (logsalesvalue~service_selling+service_selling*productknowledge+productknowledge+store_number+year+female+fulltime+logserviceyears+lograteofpay+avg_female+avg_age+avg_income+avg_homeowner+avg_residency+numofmonths_worked+mallsalessf+logstoresize+totalcases,data=mydataQ6)
+stargazer(modelQ6, 
+          title="Regression Results", type="text", 
+          column.labels=c("Model-1"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001)) 
+
+##Using IV
+modelQ6_IVSV1 <- ivreg (logsalesvalue~service_selling+service_selling*productknowledge+productknowledge+female+store_number+fulltime+logserviceyears+lograteofpay+avg_female+avg_age+avg_income+avg_homeowner+avg_residency+numofmonths_worked+mallsalessf+logstoresize+totalcases | trainedratio*married+child+married+trainedratio*child+store_number+female+fulltime+logserviceyears+lograteofpay+avg_female+avg_age+avg_income+avg_homeowner+avg_residency+numofmonths_worked+mallsalessf+logstoresize+totalcases,data=mydataQ6)
+summary(modelQ6_IVSV1,diagnostics = TRUE) # Wald test demonstration
+summary(modelQ6_IVSV1,diagnostics = TRUE) #Fstatistics > 10, sargan insignificant and Hausman significant, hence we use 2SLS Model
+#interaction is insignificant thus no need for the graph
+
+#Heteroskedasticity test
+gqtest(modelQ6_IVSV1) # Insignificant Goldfeld-Quandt test does not indicates heteroscedasticity 
+bptest(modelQ6_IVSV1) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for heteroskedasticity
+consstderSV6 <- sqrt(diag(vcovHC(modelQ6_IVSV1, type="const"))) # produces normal standard errors
+clusrobstderSV6 <- sqrt(diag(cluster.vcov(modelQ6_IVSV1, mydataQ6$storeno))) # produces clustered robust standard errors
+
+stargazer(modelQ6_IVSV1, modelQ6_IVSV1,  
+          se=list(consstderSV6,clusrobstderSV6),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE", "Clustered SE"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))  # displays normal/HW robust/clustered robust standard errors. With clustered robust standard errors, we find that two variables are no longer significant
+
+
+ 
+
+#==========================================================
+## BUILD-UP MODEL for SALESQUANTITY
+#==========================================================
+
+#Poisson Model
+poissonSQ6 <- glm(salesquantity~service_selling+service_selling*productknowledge+productknowledge+store_number+female+fulltime+logserviceyears+lograteofpay+year+avg_female+avg_age+avg_income+avg_homeowner+avg_residency+numofmonths_worked+mallsalessf+logstoresize+totalcases,family = "poisson",data=mydataQ6)
+stargazer(poissonSQ6,  
+          title="Regression Results", type="text", 
+          column.labels=c("Poisson Model"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))
+
+poissonSQ6a <- glm(salesquantity~1, data=mydataQ6, family="poisson") # Creating model for model fit assessment
+lrtest(poissonSQ6, poissonSQ6a) # Model fits the data
+
+#Negative Binomial
+negbinSQ6 <- glm.nb(salesquantity~service_selling+service_selling*productknowledge+productknowledge+store_number+female+fulltime+logserviceyears+lograteofpay+year+avg_female+avg_age+avg_income+avg_homeowner+avg_residency+numofmonths_worked+mallsalessf+logstoresize+totalcases,data=mydataQ6)
+stargazer(negbinSQ6, poissonSQ6, 
+          title="Regression Results", type="text", 
+          column.labels=c("Model-4"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))
+
+
+negbinSQ6a <- glm(salesquantity~1, data=mydataQ6) #Creating model for model fit assessment
+lrtest(negbinSQ6, negbinSQ6a) #Model fits the data
+
+#Choosing between Negative binomial and Poisson
+lrtest(negbinSQ6,poissonSQ6) #Poisson is better
+
+#Compare between Poisson and OLS model 
+#basic OLS Model
+modelQ6_SQ <- lm (logsalesquantity~service_selling+service_selling*productknowledge+productknowledge+store_number+female+fulltime+logserviceyears+lograteofpay+year+avg_female+avg_age+avg_income+avg_homeowner+avg_residency+numofmonths_worked+mallsalessf+logstoresize+totalcases,data=mydataQ6)
+
+#Comparison
+stargazer(poissonSQ6, modelQ6_SQ,  
+          title="Regression Results", type="text", 
+          column.labels=c("Poisson", "OLS"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))# The variable num_coupons has a coefficient of 0.07, which is statistically significant. This means that for each one-unit increase in num_coupons, the expected log count of purchase quantity increases by 0.07. The indicator variable shown as channelfactormail is the expected difference in log count between group 2 and the reference group (channel=newspaper). The expected log count for level 2 of channel is 0.37 higher than the expected log count for level 1. The expected log count for level 3 of channel is 1.07 higher than the expected log count for level 1.
+
+confint(poissonSQ6,'service_selling:productknowledge')
+
+#The two are comparable and hence OLS can be used for IV estimator
+#Using IV estimator 
+modelQ6_SQIV <- ivreg(logsalesquantity~service_selling+service_selling*productknowledge+productknowledge+store_number+female+fulltime+logserviceyears+lograteofpay+avg_female+avg_age+avg_income+avg_homeowner+avg_residency+numofmonths_worked+mallsalessf+logstoresize+totalcases | trainedratio+child+trainedratio*child+married*child+store_number+female+fulltime+logserviceyears+lograteofpay+avg_female+avg_age+avg_income+avg_homeowner+avg_residency+numofmonths_worked+mallsalessf+logstoresize+totalcases,data=mydataQ6)
+summary(modelQ6_SQIV, diagnostics = TRUE)
+
+#Since, the coefficient of interaction is significant, we do  plot the marginal effects
+
+#Heteroskedasticity test
+gqtest(modelQ6_SQIV) # Insignificant Goldfeld-Quandt test does not indicates heteroscedasticity 
+bptest(modelQ6_SQIV) # Significant Breusch-Pagan test  indicates heteroscedasticity
+
+#Rectifying for heteroskedasticity
+consstderSQ6 <- sqrt(diag(vcovHC(modelQ6_SQIV, type="const"))) # produces normal standard errors
+clusrobstderSQ6 <- sqrt(diag(cluster.vcov(modelQ6_SQIV, mydataQ6$storeno))) # produces clustered robust standard errors
+
+stargazer(modelQ6_SQIV, modelQ6_SQIV,  
+          se=list(consstderSQ6,clusrobstderSQ6),
+          title="Regression Results", type="text", 
+          column.labels=c("Normal SE", "Clustered SE"),
+          df=FALSE, digits=2, star.cutoffs = c(0.05,0.01,0.001))  # displays normal/HW robust/clustered robust standard errors. With clustered robust standard errors, we find that two variables are no longer significant
+
+
+
+#Plotting marginal effects using out of sample prediction 
+df9=data.frame(productknowledge=seq(0,7,each=2), service_selling=rep(c(0,1), each= 8),store_number=mean(mydataQ6$store_number),female=mean(mydataQ6$female),avg_residency=mean(mydataQ6$avg_residency),avg_homeowner=mean(mydataQ6$avg_homeowner), trainedratio=mean(mydataQ6$trainedratio),married=mean(mydataQ6$married),child=mean(mydataQ6$child),fulltime=mean(mydataQ6$fulltime),lograteofpay=mean(mydataQ6$lograteofpay),logserviceyears=mean(mydataQ6$logserviceyears),logstoresize=mean(mydataQ6$logstoresize),avg_female=mean(mydataQ6$avg_female),avg_income= mean(mydataQ6$avg_income),avg_age=mean(mydataQ6$avg_age), avg_childowner=mean(mydataQ6$avg_childowner),numofmonths_worked=mean(mydataQ6$numofmonths_worked),totalcases=mean(mydataQ6$totalcases),mallsalessf=mean(mydataQ6$mallsalessf)) 
+
+df9$predicted_logsalesquantity <- predict(modelQ6_SQIV,newdata=df9)
+
+ggplot(df9, aes(y=predicted_logsalesquantity, x=productknowledge)) + geom_line(aes(colour = factor(service_selling)),size=1)  
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
