@@ -1,6 +1,6 @@
 ---
   title: "Business Analytics Project"
-author: "Group2-Dakshata,Jackson,Kushall,Ritumbhara,Xingmin"
+author: "Group2-Dakshata,Jackson,Kushall,Ritumbhara"
 output: word_document
 editor_options: 
   chunk_output_type: console
