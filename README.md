@@ -1,6 +1,6 @@
 # Jewelry_Store_Sales_Training
 
-The data of this project is provided by a Kays Jewelers, a Jewery Retail chain.
+The data of this project is provided by Zale's, a Jewery Retail chain.
 Back in 2012, the company offered 3 voluntary training modules to its employees (salesperson & store manager) aimed to improve employees’ sales & return performance.
 
 In 2013, the company further improved the training program and introduced 5 new additional modules related to product knowledge and service and selling skills，
